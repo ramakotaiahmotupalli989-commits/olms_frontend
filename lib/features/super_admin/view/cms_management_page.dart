@@ -228,8 +228,36 @@ class _CmsManagementPageState extends State<CmsManagementPage> {
           },
           child: const Text('Add Chapter'),
         ),
-      ],
+      ]
     ));
+  }
+
+  Future<void> _deleteVideo(Map<String, dynamic> video) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Video'),
+        content: Text('Are you sure you want to delete "${video['title']}"? This action cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await _repo.delete('/cms/videos/${video['id']}');
+        _load();
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Video deleted successfully')));
+      } catch (e) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error deleting video: $e')));
+      }
+    }
   }
 }
 
@@ -379,15 +407,24 @@ class _ChapterVideoSheetState extends State<_ChapterVideoSheet> {
                       ),
                       title: Text(v['title'] ?? '', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600)),
                       subtitle: Text('${v['duration_secs'] ?? 0}s • Language: ${v['language']?.toString().toUpperCase() ?? 'EN'}', style: const TextStyle(fontSize: 12)),
-                      trailing: Switch(
-                        value: v['is_published'] ?? true,
-                        activeColor: AppColors.primary,
-                        onChanged: (val) async {
-                          try {
-                            await _repo.post('/cms/videos/${v['id']}/${val ? 'publish' : 'unpublish'}');
-                            _load();
-                          } catch (e) {}
-                        },
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Switch(
+                            value: v['is_published'] ?? true,
+                            activeColor: AppColors.primary,
+                            onChanged: (val) async {
+                              try {
+                                await _repo.post('/cms/videos/${v['id']}/${val ? 'publish' : 'unpublish'}');
+                                _load();
+                              } catch (e) {}
+                            },
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error, size: 20),
+                            onPressed: () => _deleteVideo(v),
+                          ),
+                        ],
                       ),
                     ),
                   );
