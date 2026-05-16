@@ -231,34 +231,6 @@ class _CmsManagementPageState extends State<CmsManagementPage> {
       ]
     ));
   }
-
-  Future<void> _deleteVideo(Map<String, dynamic> video) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Video'),
-        content: Text('Are you sure you want to delete "${video['title']}"? This action cannot be undone.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-            child: const Text('Delete', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      try {
-        await _repo.delete('/cms/videos/${video['id']}');
-        _load();
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Video deleted successfully')));
-      } catch (e) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error deleting video: $e')));
-      }
-    }
-  }
 }
 
 class _ChapterList extends StatefulWidget {
