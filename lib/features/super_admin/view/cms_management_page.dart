@@ -115,6 +115,11 @@ class _CmsManagementPageState extends State<CmsManagementPage> {
           decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
           child: const Icon(Icons.book_rounded, color: AppColors.primary, size: 20),
         ),
+        trailing: IconButton(
+          icon: const Icon(Icons.lock_person_rounded, color: AppColors.primary, size: 22),
+          tooltip: 'Manage School Access',
+          onPressed: () => _showSubjectAccessSheet(subject),
+        ),
         children: [
           _ChapterList(subjectId: subject['id']),
           Padding(
@@ -131,6 +136,15 @@ class _CmsManagementPageState extends State<CmsManagementPage> {
           ),
         ],
       ),
+    );
+  }
+
+  void _showSubjectAccessSheet(Map<String, dynamic> subject) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (_) => _SubjectAccessControlSheet(subject: subject),
     );
   }
 
@@ -640,6 +654,91 @@ class _ChapterAccessControlSheetState extends State<_ChapterAccessControlSheet> 
                             onChanged: (val) => _updateRule(school['id'], val, unlockDate),
                           ),
                         ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SubjectAccessControlSheet extends StatefulWidget {
+  final Map<String, dynamic> subject;
+  const _SubjectAccessControlSheet({required this.subject});
+  @override
+  State<_SubjectAccessControlSheet> createState() => _SubjectAccessControlSheetState();
+}
+
+class _SubjectAccessControlSheetState extends State<_SubjectAccessControlSheet> {
+  final _repo = ApiRepository();
+  bool _loading = true;
+  List<dynamic> _accessData = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final data = await _repo.getList('/cms/subjects/${widget.subject['id']}/access');
+      if (mounted) setState(() { _accessData = data; _loading = false; });
+    } catch (e) { if (mounted) setState(() => _loading = false); }
+  }
+
+  Future<void> _toggleAccess(int schoolId, bool grant) async {
+    try {
+      await _repo.put('/cms/subjects/${widget.subject['id']}/access/bulk', data: {
+        'school_id': schoolId,
+        'is_accessible': grant,
+      });
+      _load();
+    } catch (e) {}
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      height: MediaQuery.of(context).size.height * 0.75,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Subject Access Control', style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.w600)),
+          Text('Grant or revoke access to ALL chapters in "${widget.subject['name']}" for specific schools.', style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary)),
+          const SizedBox(height: 16),
+          const Divider(),
+          if (_loading) const Expanded(child: Center(child: CircularProgressIndicator())),
+          if (!_loading && _accessData.isEmpty) const Expanded(child: Center(child: Text('No active schools found.'))),
+          if (!_loading && _accessData.isNotEmpty)
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.only(top: 12),
+                itemCount: _accessData.length,
+                itemBuilder: (_, i) {
+                  final item = _accessData[i];
+                  final bool allAcc = item['all_accessible'] ?? false;
+                  final int accCount = item['accessible_chapters'] ?? 0;
+                  final int totalCount = item['total_chapters'] ?? 0;
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade100)),
+                    child: ListTile(
+                      title: Text(item['school_name'] ?? '', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14)),
+                      subtitle: Text(
+                        '$accCount / $totalCount chapters accessible',
+                        style: GoogleFonts.inter(fontSize: 12, color: allAcc ? AppColors.success : AppColors.textSecondary),
+                      ),
+                      trailing: Switch(
+                        value: allAcc,
+                        activeColor: AppColors.success,
+                        onChanged: (val) => _toggleAccess(item['school_id'], val),
                       ),
                     ),
                   );

@@ -93,17 +93,49 @@ class _ContentAccessControlPageState extends State<ContentAccessControlPage> {
           ? const Center(child: CircularProgressIndicator())
           : _schools.isEmpty
               ? const EmptyState(icon: Icons.school_rounded, title: 'No schools found', subtitle: 'Add schools first before configuring content access')
-              : Row(
-                  children: [
-                    // Left: School selector
-                    SizedBox(
-                      width: MediaQuery.of(context).size.width > 600 ? 280 : MediaQuery.of(context).size.width,
-                      child: _buildSchoolList(),
-                    ),
-                    // Right: Access map (only on wider screens or after selection on mobile)
-                    if (MediaQuery.of(context).size.width > 600 || _selectedSchoolId != null)
-                      Expanded(child: _buildAccessMap()),
-                  ],
+              : LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isWide = constraints.maxWidth > 700;
+                    
+                    if (isWide) {
+                      return Row(
+                        children: [
+                          // Left: School selector
+                          SizedBox(
+                            width: 300,
+                            child: _buildSchoolList(),
+                          ),
+                          // Right: Access map
+                          Expanded(child: _buildAccessMap()),
+                        ],
+                      );
+                    } else {
+                      // Mobile: Show list OR access map
+                      return _selectedSchoolId == null
+                          ? _buildSchoolList()
+                          : WillPopScope(
+                              onWillPop: () async {
+                                setState(() => _selectedSchoolId = null);
+                                return false;
+                              },
+                              child: Stack(
+                                children: [
+                                  _buildAccessMap(),
+                                  Positioned(
+                                    top: 10, left: 10,
+                                    child: CircleAvatar(
+                                      backgroundColor: Colors.white.withValues(alpha: 0.9),
+                                      child: IconButton(
+                                        icon: const Icon(Icons.arrow_back, color: AppColors.primary),
+                                        onPressed: () => setState(() => _selectedSchoolId = null),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                    }
+                  },
                 ),
     );
   }

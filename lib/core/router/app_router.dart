@@ -20,6 +20,7 @@ import '../../features/teacher/view/presentation_player_page.dart';
 import '../../features/teacher_analytics/view/performance_overview.dart';
 import '../../features/student/view/student_dashboard.dart';
 import '../../features/student/view/subject_chapters_page.dart';
+import '../../features/student/view/chapter_videos_page.dart';
 import '../../features/student/view/quiz_page.dart';
 import '../../features/parent/view/parent_dashboard.dart';
 import '../../features/ranking/view/ranking_page.dart';
@@ -113,6 +114,13 @@ class AppRouter {
             builder: (context, state) => SubjectChaptersPage(
               subjectId: int.parse(state.pathParameters['subjectId'] ?? '0'),
               subjectName: state.uri.queryParameters['name'] ?? 'Subject',
+            ),
+          ),
+          GoRoute(
+            path: '/student/chapter/:chapterId',
+            builder: (context, state) => ChapterVideosPage(
+              chapterId: int.parse(state.pathParameters['chapterId'] ?? '0'),
+              chapterTitle: state.uri.queryParameters['title'] ?? 'Chapter',
             ),
           ),
 

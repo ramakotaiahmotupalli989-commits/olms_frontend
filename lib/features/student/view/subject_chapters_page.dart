@@ -4,6 +4,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/network/api_repository.dart';
 
@@ -73,7 +74,7 @@ class _SubjectChaptersPageState extends State<SubjectChaptersPage> {
                   }
                 }
               : () {
-                  // TODO: Navigate to chapter video list
+                  context.push('/student/chapter/${ch['id']}?title=${Uri.encodeComponent(ch['title'] ?? 'Chapter')}');
                 },
           borderRadius: BorderRadius.circular(16),
           child: Container(
