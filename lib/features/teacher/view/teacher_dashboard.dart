@@ -112,17 +112,28 @@ class _TeacherDashboardState extends State<TeacherDashboard> with SingleTickerPr
   }
 
   Widget _buildKpis() {
-    return Row(children: [
-      Expanded(child: KpiCard(
-        title: 'Total Students', value: '${_data?['total_students'] ?? 0}',
-        icon: Icons.people_rounded, color: const Color(0xFF667EEA),
-      )),
-      const SizedBox(width: 12),
-      Expanded(child: KpiCard(
-        title: 'Watched This Week', value: '${_data?['watched_this_week'] ?? 0}',
-        icon: Icons.play_circle_rounded, color: const Color(0xFF43E97B),
-      )),
-    ]);
+    return LayoutBuilder(builder: (context, c) {
+      final crossCount = c.maxWidth > 500 ? 3 : 2;
+      return GridView.count(
+        shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
+        crossAxisCount: crossCount, mainAxisSpacing: 12, crossAxisSpacing: 12,
+        childAspectRatio: c.maxWidth > 500 ? 2.0 : 1.5,
+        children: [
+          KpiCard(
+            title: 'Total Students', value: '${_data?['total_students'] ?? 0}',
+            icon: Icons.people_rounded, color: const Color(0xFF667EEA),
+          ),
+          KpiCard(
+            title: 'Watched This Week', value: '${_data?['watched_this_week'] ?? 0}',
+            icon: Icons.play_circle_rounded, color: const Color(0xFF43E97B),
+          ),
+          KpiCard(
+            title: 'Quiz Avg', value: '${_data?['avg_quiz_score'] ?? 0}%',
+            icon: Icons.quiz_rounded, color: const Color(0xFFFF8F00),
+          ),
+        ],
+      );
+    });
   }
 
   Widget _buildQuickActions(BuildContext context) {
@@ -213,6 +224,7 @@ class _TeacherDashboardState extends State<TeacherDashboard> with SingleTickerPr
             ),
             child: ListTile(
               dense: true,
+              onTap: () => context.push('/teacher/analytics'),
               leading: Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(color: AppColors.error.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(8)),
@@ -244,6 +256,7 @@ class _TeacherDashboardState extends State<TeacherDashboard> with SingleTickerPr
                   final a = activity[i];
                   return ListTile(
                     dense: true,
+                    onTap: () => context.push('/teacher/analytics'),
                     leading: Container(
                       padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(

@@ -24,6 +24,7 @@ class _ExamManagementPageState extends State<ExamManagementPage> {
   List<dynamic> _exams = [];
   List<dynamic> _classes = [];
   List<dynamic> _students = [];
+  List<dynamic> _subjects = [];
 
   int? _selectedExamId;
   int? _selectedClassId;
@@ -64,6 +65,10 @@ class _ExamManagementPageState extends State<ExamManagementPage> {
     if (_selectedClassId == null) return;
     setState(() => _loading = true);
     try {
+      // Load subjects for this class
+      _subjects = await _repo.getList('/teacher/my-subjects', params: {'class_id': _selectedClassId.toString()});
+      _selectedSubjectId = null;
+
       final data = await _repo.get('/teacher/attendance/class/$_selectedClassId');
       _students = (data['students'] as List?) ?? [];
 
@@ -246,7 +251,7 @@ class _ExamManagementPageState extends State<ExamManagementPage> {
             ],
           ),
           const SizedBox(height: 12),
-          // Class selector
+          // Class and subject selectors
           Row(
             children: [
               Expanded(
@@ -272,41 +277,58 @@ class _ExamManagementPageState extends State<ExamManagementPage> {
                 ),
               ),
               const SizedBox(width: 12),
-              // Subject ID input (simplified — in production use a dropdown)
-              SizedBox(
-                width: 120,
-                child: TextFormField(
+              Expanded(
+                child: DropdownButtonFormField<int>(
+                  value: _selectedSubjectId,
                   decoration: InputDecoration(
-                    labelText: 'Subject ID',
+                    labelText: 'Subject',
                     prefixIcon: const Icon(Icons.book_rounded, size: 18),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                   ),
-                  style: GoogleFonts.inter(fontSize: 13),
-                  keyboardType: TextInputType.number,
+                  style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary),
+                  items: _subjects.map<DropdownMenuItem<int>>((s) {
+                    return DropdownMenuItem(
+                      value: s['subject_id'] as int,
+                      child: Text(s['subject_name'] ?? '', overflow: TextOverflow.ellipsis),
+                    );
+                  }).toList(),
                   onChanged: (val) {
-                    _selectedSubjectId = int.tryParse(val);
+                    setState(() => _selectedSubjectId = val);
+                    if (_selectedExamId != null && _students.isNotEmpty) {
+                      _loadExistingScores();
+                    }
                   },
-                ),
-              ),
-              const SizedBox(width: 12),
-              SizedBox(
-                width: 100,
-                child: TextFormField(
-                  initialValue: '100',
-                  decoration: InputDecoration(
-                    labelText: 'Total',
-                    prefixIcon: const Icon(Icons.score_rounded, size: 18),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                  ),
-                  style: GoogleFonts.inter(fontSize: 13),
-                  keyboardType: TextInputType.number,
-                  onChanged: (val) => _totalMarks = double.tryParse(val) ?? 100,
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 12),
+          // Total marks
+          Row(children: [
+            SizedBox(
+              width: 120,
+              child: TextFormField(
+                initialValue: '100',
+                decoration: InputDecoration(
+                  labelText: 'Total Marks',
+                  prefixIcon: const Icon(Icons.score_rounded, size: 18),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                ),
+                style: GoogleFonts.inter(fontSize: 13),
+                keyboardType: TextInputType.number,
+                onChanged: (val) => _totalMarks = double.tryParse(val) ?? 100,
+              ),
+            ),
+            const Spacer(),
+            if (_selectedExamId != null && _selectedSubjectId != null && _students.isNotEmpty)
+              TextButton.icon(
+                onPressed: _loadExistingScores,
+                icon: const Icon(Icons.refresh_rounded, size: 16),
+                label: const Text('Load Saved'),
+              ),
+          ]),
         ],
       ),
     );

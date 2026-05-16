@@ -28,12 +28,25 @@ import '../../features/attendance/view/attendance_management_page.dart';
 import '../../features/teacher/view/teacher_attendance_page.dart';
 import '../../features/teacher/view/exam_management_page.dart';
 import '../../features/principal/view/exam_results_page.dart';
+import '../../features/principal/view/salary_management_page.dart';
+import '../../features/principal/view/fee_management_page.dart';
 import '../../features/super_admin/view/school_management_page.dart';
 import '../../features/super_admin/view/cms_management_page.dart';
 import '../../features/super_admin/view/subscription_management_page.dart';
 import '../../features/super_admin/view/platform_performance_page.dart';
 import '../../features/super_admin/view/notification_broadcast_page.dart';
 import '../../features/super_admin/view/watch_hours_page.dart';
+import '../../features/super_admin/view/content_access_control_page.dart';
+import '../../features/student/view/student_attendance_page.dart';
+import '../../features/student/view/student_homework_page.dart';
+import '../../features/student/view/student_fee_status_page.dart';
+import '../../features/teacher/view/teacher_homework_page.dart';
+import '../../features/teacher/view/teacher_salary_page.dart';
+import '../../features/principal/view/timetable_management_page.dart';
+import '../../features/student/view/student_timetable_page.dart';
+import '../../features/teacher/view/teacher_schedule_page.dart';
+import '../../features/student/view/student_exam_results_page.dart';
+import '../../features/parent/view/parent_exam_results_page.dart';
 
 class AppRouter {
   AppRouter._();
@@ -64,6 +77,7 @@ class AppRouter {
           GoRoute(path: '/admin/performance', builder: (context, state) => const PlatformPerformancePage()),
           GoRoute(path: '/admin/broadcasts', builder: (context, state) => const NotificationBroadcastPage()),
           GoRoute(path: '/admin/watch-hours', builder: (context, state) => const WatchHoursPage()),
+          GoRoute(path: '/admin/content-access', builder: (context, state) => const ContentAccessControlPage()),
 
           // Principal (School Admin)
           GoRoute(path: '/principal/dashboard', builder: (context, state) => const PrincipalDashboard()),
@@ -73,6 +87,9 @@ class AppRouter {
           GoRoute(path: '/principal/student-performance', builder: (context, state) => const StudentPerformancePage()),
           GoRoute(path: '/principal/class-performance', builder: (context, state) => const ClassPerformancePage()),
           GoRoute(path: '/principal/exam-results', builder: (context, state) => const ExamResultsPage()),
+          GoRoute(path: '/principal/salaries', builder: (context, state) => const SalaryManagementPage()),
+          GoRoute(path: '/principal/fees', builder: (context, state) => const FeeManagementPage()),
+          GoRoute(path: '/principal/timetable', builder: (context, state) => const TimetableManagementPage()),
 
           // Teacher
           GoRoute(path: '/teacher/dashboard', builder: (context, state) => const TeacherDashboard()),
@@ -85,6 +102,9 @@ class AppRouter {
           GoRoute(path: '/teacher/analytics', builder: (context, state) => const PerformanceOverview()),
           GoRoute(path: '/teacher/attendance', builder: (context, state) => const TeacherAttendancePage()),
           GoRoute(path: '/teacher/exams', builder: (context, state) => const ExamManagementPage()),
+          GoRoute(path: '/teacher/homework', builder: (context, state) => const TeacherHomeworkPage()),
+          GoRoute(path: '/teacher/salary', builder: (context, state) => const TeacherSalaryPage()),
+          GoRoute(path: '/teacher/schedule', builder: (context, state) => const TeacherSchedulePage()),
 
           // Student
           GoRoute(path: '/student/dashboard', builder: (context, state) => const StudentDashboard()),
@@ -96,8 +116,15 @@ class AppRouter {
             ),
           ),
 
+          GoRoute(path: '/student/attendance', builder: (context, state) => const StudentAttendancePage()),
+          GoRoute(path: '/student/homework', builder: (context, state) => const StudentHomeworkPage()),
+          GoRoute(path: '/student/fees', builder: (context, state) => const StudentFeeStatusPage()),
+          GoRoute(path: '/student/timetable', builder: (context, state) => const StudentTimetablePage()),
+          GoRoute(path: '/student/exam-results', builder: (context, state) => const StudentExamResultsPage()),
+
           // Parent
           GoRoute(path: '/parent/dashboard', builder: (context, state) => const ParentDashboard()),
+          GoRoute(path: '/parent/exam-results', builder: (context, state) => const ParentExamResultsPage()),
 
           // Shared
           GoRoute(

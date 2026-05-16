@@ -217,6 +217,7 @@ class _PrincipalDashboardState extends State<PrincipalDashboard> with SingleTick
             ),
             child: ListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+              onTap: () => context.push('/principal/teachers'),
               leading: CircleAvatar(
                 backgroundColor: const Color(0xFF667EEA).withValues(alpha: 0.1),
                 child: Text((t['teacher_name'] ?? 'T')[0], style: GoogleFonts.outfit(color: const Color(0xFF667EEA), fontWeight: FontWeight.w700)),
@@ -237,25 +238,28 @@ class _PrincipalDashboardState extends State<PrincipalDashboard> with SingleTick
     final students = (_data?['students_falling_behind'] as List?) ?? [];
     if (students.isEmpty) return const SizedBox.shrink();
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const SectionHeader(title: 'Students Falling Behind'),
+      SectionHeader(title: 'Students Falling Behind', action: 'View All', onAction: () => context.push('/principal/student-performance')),
       GlassCard(
         padding: const EdgeInsets.all(14),
-        child: Column(children: students.take(5).map((s) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Row(children: [
-                Container(
-                  padding: const EdgeInsets.all(5),
-                  decoration: BoxDecoration(color: AppColors.warning.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
-                  child: const Icon(Icons.warning_amber_rounded, size: 16, color: AppColors.warning),
-                ),
-                const SizedBox(width: 10),
-                Expanded(child: Text(s['name'] ?? '', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500))),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(color: AppColors.error.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-                  child: Text('${s['avg_completion'] ?? 0}%', style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.error)),
-                ),
-              ]),
+        child: Column(children: students.take(5).map((s) => InkWell(
+              onTap: () => context.push('/principal/student-performance'),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Row(children: [
+                  Container(
+                    padding: const EdgeInsets.all(5),
+                    decoration: BoxDecoration(color: AppColors.warning.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
+                    child: const Icon(Icons.warning_amber_rounded, size: 16, color: AppColors.warning),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text(s['name'] ?? '', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500))),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(color: AppColors.error.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                    child: Text('${s['avg_completion'] ?? 0}%', style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.error)),
+                  ),
+                ]),
+              ),
             )).toList()),
       ),
     ]);
@@ -283,6 +287,7 @@ class _PrincipalDashboardState extends State<PrincipalDashboard> with SingleTick
           ),
           child: ListTile(
             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+            onTap: () => context.push('/principal/student-performance'),
             leading: Container(
               width: 32, height: 32,
               decoration: BoxDecoration(

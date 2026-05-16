@@ -158,11 +158,9 @@ class _ParentDashboardState extends State<ParentDashboard> with SingleTickerProv
           ])),
         ]),
         const SizedBox(height: 16),
-        Row(children: [
+        Wrap(spacing: 16, runSpacing: 8, children: [
           _buildMiniStat('\u{1F525}', '$streak days', 'Streak'),
-          const SizedBox(width: 16),
           _buildMiniStat('\u{1F4CA}', '$completion%', 'Completion'),
-          const SizedBox(width: 16),
           _buildMiniStat('\u{1F4F1}', lastActive.toString().split(' ').first, 'Last Active'),
         ]),
       ]),
@@ -227,7 +225,7 @@ class _ParentDashboardState extends State<ParentDashboard> with SingleTickerProv
   Widget _buildTeacherMessages() {
     final unread = _data?['unread_teacher_messages'] ?? 0;
     return GestureDetector(
-      onTap: () {},
+      onTap: () => context.push('/notifications'),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -262,7 +260,7 @@ class _ParentDashboardState extends State<ParentDashboard> with SingleTickerProv
     return SizedBox(
       width: double.infinity,
       child: OutlinedButton.icon(
-        onPressed: () {},
+        onPressed: () => context.push('/parent/exam-results'),
         icon: const Icon(Icons.analytics_outlined),
         label: const Text('View Weekly Summary'),
         style: OutlinedButton.styleFrom(

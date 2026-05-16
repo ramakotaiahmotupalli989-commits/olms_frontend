@@ -165,8 +165,8 @@ class _TeacherManagementPageState extends State<TeacherManagementPage> {
     try {
       currentAssignments = await _repo.getList('/principal/teachers/${teacher['id']}/assignments');
       availableSubjects = await _repo.getList('/principal/classes'); // Using classes to get subjects logic? No, need subjects.
-      // Wait, I need a list of subjects. Let's assume there is a /cms/subjects or similar.
-      availableSubjects = await _repo.getList('/cms/subjects');
+      // Wait, I need a list of subjects. Let's assume there is a /principal/subjects or similar.
+      availableSubjects = await _repo.getList('/principal/subjects');
     } catch (e) {
       debugPrint('[TeacherMgmt] Assignment load error: $e');
     }
@@ -182,7 +182,7 @@ class _TeacherManagementPageState extends State<TeacherManagementPage> {
             // Initial load in dialog
             Future.microtask(() async {
               try {
-                final subs = await _repo.getList('/cms/subjects');
+                final subs = await _repo.getList('/principal/subjects');
                 final assigns = await _repo.getList('/principal/teachers/${teacher['id']}/assignments');
                 setDialogState(() {
                   availableSubjects = subs;
@@ -200,7 +200,7 @@ class _TeacherManagementPageState extends State<TeacherManagementPage> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             title: Text('Assignments for ${teacher['name']}', style: GoogleFonts.outfit(fontWeight: FontWeight.w600)),
             content: SizedBox(
-              width: 400,
+              width: double.maxFinite,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -229,19 +229,21 @@ class _TeacherManagementPageState extends State<TeacherManagementPage> {
                   Text('Add New Assignment:', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13)),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<int>(
-                    decoration: const InputDecoration(labelText: 'Class', prefixIcon: Icon(Icons.class_)),
+                    isExpanded: true,
+                    decoration: const InputDecoration(labelText: 'Class', prefixIcon: Icon(Icons.class_), isDense: true),
                     items: _classes.map<DropdownMenuItem<int>>((c) => DropdownMenuItem(
                       value: c['id'],
-                      child: Text('Grade ${c['grade']} - ${c['section'] ?? 'N/A'}'),
+                      child: Text('Grade ${c['grade']} - ${c['section'] ?? 'N/A'}', overflow: TextOverflow.ellipsis),
                     )).toList(),
                     onChanged: (val) => setDialogState(() => selectedClassId = val),
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<int>(
-                    decoration: const InputDecoration(labelText: 'Subject', prefixIcon: Icon(Icons.book)),
+                    isExpanded: true,
+                    decoration: const InputDecoration(labelText: 'Subject', prefixIcon: Icon(Icons.book), isDense: true),
                     items: availableSubjects.map<DropdownMenuItem<int>>((s) => DropdownMenuItem(
                       value: s['id'],
-                      child: Text(s['name'] ?? ''),
+                      child: Text(s['name'] ?? '', overflow: TextOverflow.ellipsis),
                     )).toList(),
                     onChanged: (val) => setDialogState(() => selectedSubjectId = val),
                   ),
@@ -309,6 +311,8 @@ class _TeacherManagementPageState extends State<TeacherManagementPage> {
 
   Widget _buildTeacherCard(Map<String, dynamic> t) {
     final active = t['is_active'] ?? true;
+    final assignments = (t['assignments'] as List?) ?? [];
+
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
@@ -329,7 +333,28 @@ class _TeacherManagementPageState extends State<TeacherManagementPage> {
         subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           if (t['email'] != null) Text(t['email'], style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary)),
           if (t['phone'] != null) Text(t['phone'], style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary)),
-          Text('Last login: ${t['last_login'] ?? 'Never'}', style: GoogleFonts.inter(fontSize: 11, color: AppColors.textSecondary)),
+          const SizedBox(height: 6),
+          if (assignments.isEmpty)
+            Row(children: [
+              Icon(Icons.warning_amber_rounded, size: 14, color: AppColors.warning),
+              const SizedBox(width: 4),
+              Text('No assignments yet', style: GoogleFonts.inter(fontSize: 11, color: AppColors.warning, fontStyle: FontStyle.italic)),
+            ])
+          else
+            Wrap(spacing: 6, runSpacing: 4, children: assignments.map<Widget>((a) {
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.featureBlue.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: AppColors.featureBlue.withValues(alpha: 0.2)),
+                ),
+                child: Text(
+                  '${a['class_label']} · ${a['subject_name']}',
+                  style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.featureBlue),
+                ),
+              );
+            }).toList()),
         ]),
         trailing: PopupMenuButton<String>(
           itemBuilder: (_) => <PopupMenuEntry<String>>[
@@ -363,68 +388,367 @@ class _TeacherManagementPageState extends State<TeacherManagementPage> {
     final passwordCtrl = TextEditingController(text: 'password123');
     bool isSubmitting = false;
 
+    // Step tracking: 0 = basic info, 1 = assignments
+    int step = 0;
+
+    // Assignment state
+    List<dynamic> availableSubjects = [];
+    List<Map<String, dynamic>> pendingAssignments = [];
+    int? selectedClassId;
+    int? selectedSubjectId;
+    bool subjectsLoaded = false;
+
     showDialog(
       context: context,
       builder: (_) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text('Add Teacher', style: GoogleFonts.outfit(fontWeight: FontWeight.w600)),
-          content: Column(mainAxisSize: MainAxisSize.min, children: [
-            TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Full Name', prefixIcon: Icon(Icons.person))),
-            const SizedBox(height: 12),
-            TextField(controller: emailCtrl, decoration: const InputDecoration(labelText: 'Email', prefixIcon: Icon(Icons.email))),
-            const SizedBox(height: 12),
-            TextField(controller: phoneCtrl, decoration: const InputDecoration(labelText: 'Phone', prefixIcon: Icon(Icons.phone))),
-            const SizedBox(height: 12),
-            TextField(controller: passwordCtrl, decoration: const InputDecoration(labelText: 'Password', prefixIcon: Icon(Icons.lock))),
-          ]),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
+        builder: (ctx, setDialogState) {
+          // Load subjects on Step 2 entry
+          if (step == 1 && !subjectsLoaded) {
+            subjectsLoaded = true;
+            _repo.getList('/principal/subjects').then((subs) {
+              setDialogState(() => availableSubjects = subs);
+            }).catchError((_) {});
+          }
+
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Row(children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(colors: [Color(0xFF667EEA), Color(0xFF764BA2)]),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(step == 0 ? Icons.person_add_rounded : Icons.assignment_ind_rounded, color: Colors.white, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(step == 0 ? 'Onboard Teacher' : 'Assign Classes & Subjects',
+                      style: GoogleFonts.outfit(fontSize: 17, fontWeight: FontWeight.w700)),
+                  Text(step == 0 ? 'Step 1 of 2 — Basic Info' : 'Step 2 of 2 — Assignments',
+                      style: GoogleFonts.inter(fontSize: 11, color: AppColors.textSecondary)),
+                ]),
+              ),
+            ]),
+            content: SizedBox(
+              width: 420,
+              child: step == 0
+                  ? _buildStep1(nameCtrl, emailCtrl, phoneCtrl, passwordCtrl)
+                  : _buildStep2(
+                      setDialogState, availableSubjects, pendingAssignments,
+                      selectedClassId, selectedSubjectId,
+                      (cid) => selectedClassId = cid,
+                      (sid) => selectedSubjectId = sid,
+                    ),
             ),
-            ElevatedButton(
-              onPressed: isSubmitting
-                  ? null
-                  : () async {
-                      if (nameCtrl.text.isEmpty || emailCtrl.text.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Name and Email are required'), backgroundColor: AppColors.warning),
-                        );
-                        return;
-                      }
-                      setDialogState(() => isSubmitting = true);
-                      try {
-                        await _repo.post('/principal/teachers', data: {
-                          'name': nameCtrl.text,
-                          'email': emailCtrl.text,
-                          'phone': phoneCtrl.text.isNotEmpty ? phoneCtrl.text : null,
-                          'password': passwordCtrl.text,
-                        });
-                        if (ctx.mounted) Navigator.pop(ctx);
-                        await _load();
-                        if (mounted) {
-                          await _showSuccessDialog(
-                            'Teacher Added',
-                            '"${nameCtrl.text}" has been added successfully.',
-                          );
+            actions: [
+              // Back / Cancel
+              TextButton(
+                onPressed: () {
+                  if (step == 0) {
+                    Navigator.pop(ctx);
+                  } else {
+                    setDialogState(() => step = 0);
+                  }
+                },
+                child: Text(step == 0 ? 'Cancel' : 'Back'),
+              ),
+              // Next / Create
+              ElevatedButton(
+                onPressed: isSubmitting
+                    ? null
+                    : () async {
+                        if (step == 0) {
+                          // Validate step 1
+                          if (nameCtrl.text.isEmpty || emailCtrl.text.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Name and Email are required'), backgroundColor: AppColors.warning),
+                            );
+                            return;
+                          }
+                          setDialogState(() => step = 1);
+                        } else {
+                          // Submit — create teacher with assignments
+                          setDialogState(() => isSubmitting = true);
+                          try {
+                            final assignmentsPayload = pendingAssignments
+                                .map((a) => {'class_id': a['class_id'], 'subject_id': a['subject_id']})
+                                .toList();
+
+                            await _repo.post('/principal/teachers', data: {
+                              'name': nameCtrl.text,
+                              'email': emailCtrl.text,
+                              'phone': phoneCtrl.text.isNotEmpty ? phoneCtrl.text : null,
+                              'password': passwordCtrl.text,
+                              'assignments': assignmentsPayload,
+                            });
+                            if (ctx.mounted) Navigator.pop(ctx);
+                            await _load();
+                            if (mounted) {
+                              final count = pendingAssignments.length;
+                              await _showSuccessDialog(
+                                'Teacher Onboarded',
+                                '"${nameCtrl.text}" has been added with $count assignment${count != 1 ? 's' : ''}.',
+                              );
+                            }
+                          } catch (e) {
+                            setDialogState(() => isSubmitting = false);
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
+                              );
+                            }
+                          }
                         }
-                      } catch (e) {
-                        setDialogState(() => isSubmitting = false);
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Error adding teacher: $e'), backgroundColor: AppColors.error),
-                          );
-                        }
-                      }
-                    },
-              child: isSubmitting
-                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Text('Add Teacher'),
-            ),
-          ],
-        ),
+                      },
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                ),
+                child: isSubmitting
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : Row(mainAxisSize: MainAxisSize.min, children: [
+                        Text(step == 0 ? 'Next' : pendingAssignments.isEmpty ? 'Skip & Create' : 'Create Teacher'),
+                        const SizedBox(width: 4),
+                        Icon(step == 0 ? Icons.arrow_forward_rounded : Icons.check_rounded, size: 16),
+                      ]),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
+
+  // ── Step 1: Basic Info ──
+  Widget _buildStep1(
+    TextEditingController nameCtrl,
+    TextEditingController emailCtrl,
+    TextEditingController phoneCtrl,
+    TextEditingController passwordCtrl,
+  ) {
+    return Column(mainAxisSize: MainAxisSize.min, children: [
+      // Progress indicator
+      Row(children: [
+        Expanded(child: Container(height: 4, decoration: BoxDecoration(
+          color: AppColors.primary, borderRadius: BorderRadius.circular(2),
+        ))),
+        const SizedBox(width: 4),
+        Expanded(child: Container(height: 4, decoration: BoxDecoration(
+          color: Colors.grey.shade200, borderRadius: BorderRadius.circular(2),
+        ))),
+      ]),
+      const SizedBox(height: 20),
+      TextField(
+        controller: nameCtrl,
+        decoration: InputDecoration(
+          labelText: 'Full Name *',
+          prefixIcon: const Icon(Icons.person_rounded),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      ),
+      const SizedBox(height: 14),
+      TextField(
+        controller: emailCtrl,
+        decoration: InputDecoration(
+          labelText: 'Email *',
+          prefixIcon: const Icon(Icons.email_rounded),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+        keyboardType: TextInputType.emailAddress,
+      ),
+      const SizedBox(height: 14),
+      TextField(
+        controller: phoneCtrl,
+        decoration: InputDecoration(
+          labelText: 'Phone (Optional)',
+          prefixIcon: const Icon(Icons.phone_rounded),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+        keyboardType: TextInputType.phone,
+      ),
+      const SizedBox(height: 14),
+      TextField(
+        controller: passwordCtrl,
+        decoration: InputDecoration(
+          labelText: 'Password',
+          prefixIcon: const Icon(Icons.lock_rounded),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          helperText: 'Default: password123',
+        ),
+      ),
+    ]);
+  }
+
+  // ── Step 2: Assign Classes & Subjects ──
+  Widget _buildStep2(
+    StateSetter setDialogState,
+    List<dynamic> availableSubjects,
+    List<Map<String, dynamic>> pendingAssignments,
+    int? selectedClassId,
+    int? selectedSubjectId,
+    Function(int?) onClassChanged,
+    Function(int?) onSubjectChanged,
+  ) {
+    return Column(mainAxisSize: MainAxisSize.min, children: [
+      // Progress indicator
+      Row(children: [
+        Expanded(child: Container(height: 4, decoration: BoxDecoration(
+          color: AppColors.success, borderRadius: BorderRadius.circular(2),
+        ))),
+        const SizedBox(width: 4),
+        Expanded(child: Container(height: 4, decoration: BoxDecoration(
+          color: AppColors.primary, borderRadius: BorderRadius.circular(2),
+        ))),
+      ]),
+      const SizedBox(height: 16),
+
+      // Info banner
+      Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.info.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.info.withValues(alpha: 0.2)),
+        ),
+        child: Row(children: [
+          const Icon(Icons.info_outline_rounded, size: 18, color: AppColors.info),
+          const SizedBox(width: 10),
+          Expanded(child: Text(
+            'Assign this teacher to specific classes and subjects. You can also do this later.',
+            style: GoogleFonts.inter(fontSize: 11, color: AppColors.info),
+          )),
+        ]),
+      ),
+      const SizedBox(height: 16),
+
+      // Class dropdown
+      DropdownButtonFormField<int>(
+        value: selectedClassId,
+        decoration: InputDecoration(
+          labelText: 'Class',
+          prefixIcon: const Icon(Icons.class_rounded),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        ),
+        style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary),
+        items: _classes.map<DropdownMenuItem<int>>((c) => DropdownMenuItem(
+          value: c['id'] as int,
+          child: Text('Grade ${c['grade']} - ${c['section'] ?? 'N/A'}'),
+        )).toList(),
+        onChanged: (val) {
+          onClassChanged(val);
+          setDialogState(() {});
+        },
+      ),
+      const SizedBox(height: 12),
+
+      // Subject dropdown
+      DropdownButtonFormField<int>(
+        value: selectedSubjectId,
+        decoration: InputDecoration(
+          labelText: 'Subject',
+          prefixIcon: const Icon(Icons.book_rounded),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        ),
+        style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary),
+        items: availableSubjects.map<DropdownMenuItem<int>>((s) => DropdownMenuItem(
+          value: s['id'] as int,
+          child: Text('${s['name']}${s['grade'] != null ? ' (${s['grade']})' : ''}', overflow: TextOverflow.ellipsis),
+        )).toList(),
+        onChanged: (val) {
+          onSubjectChanged(val);
+          setDialogState(() {});
+        },
+      ),
+      const SizedBox(height: 12),
+
+      // Add assignment button
+      SizedBox(
+        width: double.infinity,
+        child: OutlinedButton.icon(
+          onPressed: (selectedClassId == null || selectedSubjectId == null) ? null : () {
+            // Check duplicate
+            final exists = pendingAssignments.any(
+              (a) => a['class_id'] == selectedClassId && a['subject_id'] == selectedSubjectId,
+            );
+            if (exists) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('This assignment already added'), backgroundColor: AppColors.warning),
+              );
+              return;
+            }
+
+            // Find labels
+            final classItem = _classes.firstWhere((c) => c['id'] == selectedClassId, orElse: () => {});
+            final subjItem = availableSubjects.firstWhere((s) => s['id'] == selectedSubjectId, orElse: () => {});
+
+            pendingAssignments.add({
+              'class_id': selectedClassId,
+              'subject_id': selectedSubjectId,
+              'class_label': 'Grade ${classItem['grade']} - ${classItem['section'] ?? 'N/A'}',
+              'subject_label': subjItem['name'] ?? '',
+            });
+            onClassChanged(null);
+            onSubjectChanged(null);
+            setDialogState(() {});
+          },
+          icon: const Icon(Icons.add_rounded, size: 16),
+          label: const Text('Add Assignment'),
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        ),
+      ),
+      const SizedBox(height: 12),
+
+      // Pending assignments list
+      if (pendingAssignments.isNotEmpty) ...[
+        Row(children: [
+          Text('Assignments (${pendingAssignments.length})',
+              style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.success)),
+          const Spacer(),
+        ]),
+        const SizedBox(height: 6),
+        ...pendingAssignments.asMap().entries.map((entry) {
+          final idx = entry.key;
+          final a = entry.value;
+          return Container(
+            margin: const EdgeInsets.only(bottom: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.success.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.success.withValues(alpha: 0.15)),
+            ),
+            child: Row(children: [
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: AppColors.success.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Icon(Icons.check_rounded, size: 14, color: AppColors.success),
+              ),
+              const SizedBox(width: 8),
+              Expanded(child: Text(
+                '${a['class_label']} → ${a['subject_label']}',
+                style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500),
+              )),
+              InkWell(
+                onTap: () {
+                  pendingAssignments.removeAt(idx);
+                  setDialogState(() {});
+                },
+                child: const Icon(Icons.close_rounded, size: 16, color: AppColors.error),
+              ),
+            ]),
+          );
+        }),
+      ],
+    ]);
+  }
 }
+

@@ -207,6 +207,8 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> with SingleTi
               const SizedBox(width: 10),
               _quickAction('Content', Icons.video_library_rounded, [const Color(0xFFFF6B6B), const Color(0xFFFF8E53)], () => context.go('/admin/cms')),
               const SizedBox(width: 10),
+              _quickAction('Access Control', Icons.lock_person_rounded, [const Color(0xFFFF8F00), const Color(0xFFFFB347)], () => context.go('/admin/content-access')),
+              const SizedBox(width: 10),
               _quickAction('Watch Hours', Icons.play_circle_rounded, [const Color(0xFF43E97B), const Color(0xFF38F9D7)], () => context.go('/admin/watch-hours')),
               const SizedBox(width: 10),
               _quickAction('Subscriptions', Icons.card_membership_rounded, [const Color(0xFFA18CD1), const Color(0xFFFBC2EB)], () => context.go('/admin/subscriptions')),
@@ -256,35 +258,38 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> with SingleTi
   Widget _buildAlertCard(Map<String, dynamic> alert) {
     final days = alert['days_until_expiry'] ?? 0;
     final urgentColor = days <= 7 ? AppColors.error : AppColors.warning;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: urgentColor.withValues(alpha: 0.15)),
-        boxShadow: [BoxShadow(color: urgentColor.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 3))],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: urgentColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
-            child: Icon(Icons.warning_amber_rounded, color: urgentColor, size: 20),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(alert['school_name'] ?? '', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 2),
-                Text('Expires in $days days • ${alert['tier'] ?? ''}', style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary)),
-              ],
+    return GestureDetector(
+      onTap: () => context.go('/admin/subscriptions'),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: urgentColor.withValues(alpha: 0.15)),
+          boxShadow: [BoxShadow(color: urgentColor.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 3))],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(color: urgentColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+              child: Icon(Icons.warning_amber_rounded, color: urgentColor, size: 20),
             ),
-          ),
-          StatusBadge(label: '$days days', color: urgentColor, showDot: true),
-        ],
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(alert['school_name'] ?? '', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 2),
+                  Text('Expires in $days days • ${alert['tier'] ?? ''}', style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary)),
+                ],
+              ),
+            ),
+            StatusBadge(label: '$days days', color: urgentColor, showDot: true),
+          ],
+        ),
       ),
     );
   }
@@ -346,33 +351,36 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> with SingleTi
             child: Text('No new registrations', style: GoogleFonts.inter(color: AppColors.textSecondary)),
           )
         else
-          ...regs.take(5).map((r) => Container(
-                margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.grey.shade100),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(colors: [const Color(0xFF667EEA).withValues(alpha: 0.1), const Color(0xFF764BA2).withValues(alpha: 0.05)]),
-                        borderRadius: BorderRadius.circular(10),
+          ...regs.take(5).map((r) => GestureDetector(
+                onTap: () => context.go('/admin/schools'),
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.grey.shade100),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(colors: [const Color(0xFF667EEA).withValues(alpha: 0.1), const Color(0xFF764BA2).withValues(alpha: 0.05)]),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.business_rounded, color: Color(0xFF667EEA), size: 18),
                       ),
-                      child: const Icon(Icons.business_rounded, color: Color(0xFF667EEA), size: 18),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text(r['school_name'] ?? '', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600)),
-                        Text(r['city'] ?? '', style: GoogleFonts.inter(fontSize: 11, color: AppColors.textSecondary)),
-                      ]),
-                    ),
-                    const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.textSecondary),
-                  ],
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text(r['school_name'] ?? '', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600)),
+                          Text(r['city'] ?? '', style: GoogleFonts.inter(fontSize: 11, color: AppColors.textSecondary)),
+                        ]),
+                      ),
+                      const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.textSecondary),
+                    ],
+                  ),
                 ),
               )),
       ],

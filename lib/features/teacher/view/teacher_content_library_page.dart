@@ -57,12 +57,35 @@ class _TeacherContentLibraryPageState extends State<TeacherContentLibraryPage> {
               ? const EmptyState(
                   icon: Icons.library_books_rounded,
                   title: 'No content available',
-                  subtitle: 'Videos will appear once the admin publishes them',
+                  subtitle: 'Content will appear once your subjects are assigned and videos published',
                 )
-              : ListView.builder(
+              : ListView(
                   padding: const EdgeInsets.all(16),
-                  itemCount: _filteredSubjects.length,
-                  itemBuilder: (_, i) => _buildSubjectCard(_filteredSubjects[i], i),
+                  children: [
+                    // Info banner
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      margin: const EdgeInsets.only(bottom: 14),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [const Color(0xFF667EEA).withValues(alpha: 0.08), const Color(0xFF764BA2).withValues(alpha: 0.04)],
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFF667EEA).withValues(alpha: 0.15)),
+                      ),
+                      child: Row(children: [
+                        const Icon(Icons.assignment_ind_rounded, size: 20, color: Color(0xFF667EEA)),
+                        const SizedBox(width: 10),
+                        Expanded(child: Text(
+                          'Showing ${_filteredSubjects.length} subject${_filteredSubjects.length != 1 ? 's' : ''} assigned to you',
+                          style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF667EEA)),
+                        )),
+                      ]),
+                    ),
+                    ..._filteredSubjects.asMap().entries.map(
+                      (e) => _buildSubjectCard(e.value as Map<String, dynamic>, e.key),
+                    ),
+                  ],
                 ),
     );
   }

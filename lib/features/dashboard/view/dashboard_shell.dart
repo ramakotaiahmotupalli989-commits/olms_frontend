@@ -84,6 +84,9 @@ class _DashboardShellState extends State<DashboardShell> {
           _MenuItem(Icons.bar_chart_rounded, 'Student Perf.', '/principal/student-performance'),
           _MenuItem(Icons.pie_chart_rounded, 'Class Perf.', '/principal/class-performance'),
           _MenuItem(Icons.assignment_rounded, 'Exam Results', '/principal/exam-results'),
+          _MenuItem(Icons.account_balance_wallet_rounded, 'Salary Mgmt', '/principal/salaries'),
+          _MenuItem(Icons.receipt_long_rounded, 'Fee Mgmt', '/principal/fees'),
+          _MenuItem(Icons.calendar_view_week_rounded, 'Timetable', '/principal/timetable'),
           _MenuItem(Icons.notifications_rounded, 'Notifications', '/notifications'),
         ];
       case AppConstants.teacher:
@@ -91,19 +94,28 @@ class _DashboardShellState extends State<DashboardShell> {
           _MenuItem(Icons.dashboard_rounded, 'Dashboard', '/teacher/dashboard'),
           _MenuItem(Icons.play_lesson_rounded, 'Content Library', '/teacher/library'),
           _MenuItem(Icons.quiz_rounded, 'Quizzes & Tests', '/teacher/quizzes'),
+          _MenuItem(Icons.home_work_rounded, 'Homework', '/teacher/homework'),
           _MenuItem(Icons.how_to_reg_rounded, 'Attendance', '/teacher/attendance'),
           _MenuItem(Icons.assignment_rounded, 'Exam Scores', '/teacher/exams'),
           _MenuItem(Icons.analytics_rounded, 'Analytics', '/teacher/analytics'),
+          _MenuItem(Icons.account_balance_wallet_rounded, 'My Salary', '/teacher/salary'),
+          _MenuItem(Icons.calendar_view_week_rounded, 'My Schedule', '/teacher/schedule'),
           _MenuItem(Icons.notifications_rounded, 'Notifications', '/notifications'),
         ];
       case AppConstants.student:
         return const [
           _MenuItem(Icons.dashboard_rounded, 'Dashboard', '/student/dashboard'),
+          _MenuItem(Icons.how_to_reg_rounded, 'Attendance', '/student/attendance'),
+          _MenuItem(Icons.home_work_rounded, 'Homework', '/student/homework'),
+          _MenuItem(Icons.assignment_rounded, 'Exam Results', '/student/exam-results'),
+          _MenuItem(Icons.receipt_long_rounded, 'Fee Status', '/student/fees'),
+          _MenuItem(Icons.calendar_view_week_rounded, 'Timetable', '/student/timetable'),
           _MenuItem(Icons.notifications_rounded, 'Notifications', '/notifications'),
         ];
       case AppConstants.parent:
         return const [
           _MenuItem(Icons.dashboard_rounded, 'Dashboard', '/parent/dashboard'),
+          _MenuItem(Icons.assignment_rounded, 'Exam Results', '/parent/exam-results'),
           _MenuItem(Icons.notifications_rounded, 'Notifications', '/notifications'),
         ];
       default:

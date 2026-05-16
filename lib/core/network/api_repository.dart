@@ -28,6 +28,11 @@ class ApiRepository {
     return res.data is Map<String, dynamic> ? res.data : {'data': res.data};
   }
 
+  Future<Map<String, dynamic>> put(String path, {dynamic data}) async {
+    final res = await _api.put(path, data: data);
+    return res.data is Map<String, dynamic> ? res.data : {'data': res.data};
+  }
+
   Future<Map<String, dynamic>> delete(String path) async {
     final res = await _api.delete(path);
     return res.data is Map<String, dynamic> ? res.data : {'data': res.data};

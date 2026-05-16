@@ -135,7 +135,18 @@ class _StudentDashboardState extends State<StudentDashboard> with TickerProvider
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       const SectionHeader(title: 'Continue Learning'),
       GestureDetector(
-        onTap: () {},
+        onTap: () {
+          final videoId = cl['video_id'];
+          if (videoId != null) {
+            context.push(
+              '/presentation/$videoId'
+              '?title=${Uri.encodeComponent(cl['title'] ?? 'Lesson')}'
+              '&url=${Uri.encodeComponent(cl['video_url'] ?? '')}'
+              '&thumb=${Uri.encodeComponent(cl['thumbnail_url'] ?? '')}'
+              '&duration=${cl['duration_secs'] ?? 0}',
+            );
+          }
+        },
         child: GlassCard(
           padding: const EdgeInsets.all(16),
           child: Row(children: [
@@ -203,7 +214,7 @@ class _StudentDashboardState extends State<StudentDashboard> with TickerProvider
             ];
             final gradient = gradients[i % gradients.length];
             return GestureDetector(
-              onTap: () {},
+              onTap: () => context.push('/student/subject/${s['id']}?name=${Uri.encodeComponent(s['name'] ?? 'Subject')}'),
               child: Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -380,7 +391,10 @@ class _StudentDashboardState extends State<StudentDashboard> with TickerProvider
               ),
               title: Text(r['quiz_title'] ?? 'Test Result', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600)),
               subtitle: Text('Score: ${r['score']}/${r['total_marks']}', style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary)),
-              trailing: TextButton(onPressed: () {}, child: const Text('View Board')),
+              trailing: TextButton(
+                onPressed: () => context.push('/ranking/${r['quiz_id']}/${r['class_id']}'),
+                child: const Text('View Board'),
+              ),
             ),
           )),
     ]);

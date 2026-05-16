@@ -1,6 +1,6 @@
 /// EduCinema LMS — Presentation Player
 /// Full-screen cinematic video player optimized for classroom presentation.
-/// Uses video_player + chewie for real HLS/MP4 playback.
+/// Uses youtube_player_flutter for YouTube links, video_player + chewie for HLS/MP4 fallback.
 library;
 
 import 'package:flutter/material.dart';
@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
+import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import '../../../core/theme/app_theme.dart';
 
 class PresentationPlayerPage extends StatefulWidget {
@@ -34,7 +35,9 @@ class _PresentationPlayerPageState extends State<PresentationPlayerPage>
     with SingleTickerProviderStateMixin {
   VideoPlayerController? _videoController;
   ChewieController? _chewieController;
+  YoutubePlayerController? _youtubeController;
   bool _hasValidUrl = false;
+  bool _isYoutube = false;
   bool _isInitializing = true;
   bool _initError = false;
   late AnimationController _fadeController;
@@ -65,6 +68,34 @@ class _PresentationPlayerPageState extends State<PresentationPlayerPage>
       setState(() {
         _isInitializing = false;
         _initError = true;
+      });
+      _fadeController.forward();
+      return;
+    }
+
+    final ytId = YoutubePlayer.convertUrlToId(url);
+    if (ytId != null) {
+      _isYoutube = true;
+      _youtubeController = YoutubePlayerController(
+        initialVideoId: ytId,
+        flags: const YoutubePlayerFlags(
+          autoPlay: true,
+          mute: false,
+          enableCaption: true,
+          hideControls: false,
+          controlsVisibleAtStart: true,
+          // ── Lock playback inside the app ──
+          disableDragSeek: false,
+          forceHD: false,
+          loop: false,
+          isLive: false,
+          // Hide YouTube logo from controls bar
+          showLiveFullscreenButton: false,
+        ),
+      );
+      setState(() {
+        _isInitializing = false;
+        _initError = false;
       });
       _fadeController.forward();
       return;
@@ -110,6 +141,7 @@ class _PresentationPlayerPageState extends State<PresentationPlayerPage>
   void dispose() {
     _chewieController?.dispose();
     _videoController?.dispose();
+    _youtubeController?.dispose();
     _fadeController.dispose();
     // Restore orientation
     SystemChrome.setPreferredOrientations([
@@ -145,11 +177,81 @@ class _PresentationPlayerPageState extends State<PresentationPlayerPage>
         children: [
           _buildTopBar(),
           Expanded(
-            child: Chewie(controller: _chewieController!),
+            child: _isYoutube
+                ? _buildYoutubePlayer()
+                : Chewie(controller: _chewieController!),
           ),
           _buildInfoBar(),
         ],
       ),
+    );
+  }
+
+  /// Embedded YouTube player with overlays that block the YouTube logo
+  /// and watermark links, keeping playback 100% inside the app.
+  Widget _buildYoutubePlayer() {
+    return Stack(
+      children: [
+        // The actual YouTube player — renders inside a WebView, never opens externally
+        YoutubePlayerBuilder(
+          player: YoutubePlayer(
+            controller: _youtubeController!,
+            showVideoProgressIndicator: true,
+            progressIndicatorColor: AppColors.primary,
+            bottomActions: [
+              CurrentPosition(),
+              const SizedBox(width: 8),
+              ProgressBar(
+                isExpanded: true,
+                colors: ProgressBarColors(
+                  playedColor: AppColors.primary,
+                  handleColor: AppColors.primary,
+                  bufferedColor: AppColors.primary.withValues(alpha: 0.3),
+                  backgroundColor: Colors.white24,
+                ),
+              ),
+              const SizedBox(width: 8),
+              RemainingDuration(),
+              const SizedBox(width: 8),
+              PlaybackSpeedButton(),
+            ],
+          ),
+          builder: (context, player) => player,
+        ),
+
+        // ── Block YouTube logo (top-left corner) ──
+        Positioned(
+          top: 0,
+          left: 0,
+          child: GestureDetector(
+            onTap: () {}, // swallow tap — prevents opening YouTube
+            behavior: HitTestBehavior.opaque,
+            child: const SizedBox(width: 100, height: 40),
+          ),
+        ),
+
+        // ── Block YouTube watermark (bottom-right, above controls) ──
+        Positioned(
+          bottom: 48,
+          right: 0,
+          child: GestureDetector(
+            onTap: () {},
+            behavior: HitTestBehavior.opaque,
+            child: const SizedBox(width: 60, height: 36),
+          ),
+        ),
+
+        // ── Block "Watch on YouTube" link (top-right) ──
+        Positioned(
+          top: 0,
+          right: 0,
+          child: GestureDetector(
+            onTap: () {},
+            behavior: HitTestBehavior.opaque,
+            child: const SizedBox(width: 140, height: 40),
+          ),
+        ),
+      ],
     );
   }
 

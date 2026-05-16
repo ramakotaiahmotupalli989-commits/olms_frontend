@@ -49,6 +49,7 @@ class _SubjectChaptersPageState extends State<SubjectChaptersPage> {
     final completion = (ch['completion_percent'] ?? 0).toDouble();
     final locked = ch['is_locked'] ?? false;
     final hasQuiz = ch['has_quiz'] ?? false;
+    final lockMessage = ch['lock_message'] as String?;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -56,7 +57,24 @@ class _SubjectChaptersPageState extends State<SubjectChaptersPage> {
         color: locked ? Colors.grey.shade50 : Colors.white,
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
-          onTap: locked ? null : () {},
+          onTap: locked
+              ? () {
+                  if (lockMessage != null && lockMessage.isNotEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Row(children: [
+                        const Icon(Icons.lock_rounded, color: Colors.white, size: 18),
+                        const SizedBox(width: 8),
+                        Expanded(child: Text(lockMessage)),
+                      ]),
+                      backgroundColor: Colors.grey.shade700,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ));
+                  }
+                }
+              : () {
+                  // TODO: Navigate to chapter video list
+                },
           borderRadius: BorderRadius.circular(16),
           child: Container(
             padding: const EdgeInsets.all(16),
@@ -85,17 +103,21 @@ class _SubjectChaptersPageState extends State<SubjectChaptersPage> {
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(ch['title'] ?? '', style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: locked ? Colors.grey : AppColors.textPrimary)),
                 const SizedBox(height: 4),
-                Row(children: [
-                  Text('${ch['total_videos'] ?? 0} videos', style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary)),
-                  if (hasQuiz) ...[
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(color: AppColors.secondary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
-                      child: Text('Quiz', style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.secondary)),
-                    ),
-                  ],
-                ]),
+                if (locked && lockMessage != null) ...[
+                  Text(lockMessage, style: GoogleFonts.inter(fontSize: 11, color: AppColors.error, fontStyle: FontStyle.italic), maxLines: 2, overflow: TextOverflow.ellipsis),
+                ] else ...[
+                  Row(children: [
+                    Text('${ch['total_videos'] ?? 0} videos', style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary)),
+                    if (hasQuiz) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(color: AppColors.secondary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
+                        child: Text('Quiz', style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.secondary)),
+                      ),
+                    ],
+                  ]),
+                ],
                 if (!locked) ...[
                   const SizedBox(height: 8),
                   ClipRRect(
