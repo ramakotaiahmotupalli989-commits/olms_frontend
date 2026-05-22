@@ -115,10 +115,19 @@ class _CmsManagementPageState extends State<CmsManagementPage> {
           decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
           child: const Icon(Icons.book_rounded, color: AppColors.primary, size: 20),
         ),
-        trailing: IconButton(
-          icon: const Icon(Icons.lock_person_rounded, color: AppColors.primary, size: 22),
-          tooltip: 'Manage School Access',
-          onPressed: () => _showSubjectAccessSheet(subject),
+        trailing: PopupMenuButton<String>(
+          icon: const Icon(Icons.more_vert_rounded, color: AppColors.textSecondary),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          onSelected: (v) {
+            if (v == 'access') _showSubjectAccessSheet(subject);
+            if (v == 'edit') _showEditSubjectDialog(subject);
+            if (v == 'delete') _deleteSubject(subject);
+          },
+          itemBuilder: (_) => [
+            const PopupMenuItem(value: 'edit', child: ListTile(leading: Icon(Icons.edit_rounded, size: 18), title: Text('Edit Subject'), contentPadding: EdgeInsets.zero)),
+            const PopupMenuItem(value: 'access', child: ListTile(leading: Icon(Icons.lock_person_rounded, size: 18, color: AppColors.primary), title: Text('Access Control'), contentPadding: EdgeInsets.zero)),
+            const PopupMenuItem(value: 'delete', child: ListTile(leading: Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.error), title: Text('Delete Subject', style: TextStyle(color: AppColors.error)), contentPadding: EdgeInsets.zero)),
+          ],
         ),
         children: [
           _ChapterList(subjectId: subject['id']),
@@ -146,6 +155,63 @@ class _CmsManagementPageState extends State<CmsManagementPage> {
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (_) => _SubjectAccessControlSheet(subject: subject),
     );
+  }
+
+  void _showEditSubjectDialog(Map<String, dynamic> subject) {
+    final nameCtrl = TextEditingController(text: subject['name']);
+    final gradeCtrl = TextEditingController(text: subject['grade']?.toString() ?? '10');
+
+    showDialog(context: context, builder: (ctx) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: const Text('Edit Subject'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Subject Name', prefixIcon: Icon(Icons.label_outline))),
+          const SizedBox(height: 12),
+          TextField(controller: gradeCtrl, decoration: const InputDecoration(labelText: 'Grade', prefixIcon: Icon(Icons.school_outlined))),
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+        ElevatedButton(
+          onPressed: () async {
+            if (nameCtrl.text.isEmpty) return;
+            final confirmed = await _showConfirmDialog('Confirm Changes', 'Save changes for "${nameCtrl.text}"?');
+            if (confirmed == true && mounted) {
+              try {
+                await _repo.patch('/cms/subjects/${subject['id']}', data: {'name': nameCtrl.text, 'grade': gradeCtrl.text});
+                if (mounted) {
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Subject updated successfully!'), backgroundColor: AppColors.success));
+                  _load();
+                }
+              } catch (e) {
+                if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+              }
+            }
+          },
+          child: const Text('Save Changes'),
+        ),
+      ],
+    ));
+  }
+
+  Future<void> _deleteSubject(Map<String, dynamic> subject) async {
+    final confirmed = await _showConfirmDialog(
+      'Delete Subject',
+      'Are you sure you want to delete "${subject['name']}"? This will delete all chapters, videos, and quizzes associated with it. This action cannot be undone.',
+    );
+
+    if (confirmed == true) {
+      try {
+        await _repo.delete('/cms/subjects/${subject['id']}');
+        _load();
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Subject deleted successfully'), backgroundColor: AppColors.success));
+      } catch (e) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error deleting subject: $e'), backgroundColor: AppColors.error));
+      }
+    }
   }
 
   void _showAddSubjectDialog() {
@@ -364,6 +430,40 @@ class _ChapterVideoSheetState extends State<_ChapterVideoSheet> {
                     margin: const EdgeInsets.only(bottom: 12),
                     decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade100)),
                     child: ListTile(
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            title: Text('Play Video?', style: GoogleFonts.outfit(fontWeight: FontWeight.w600)),
+                            content: Text('Do you want to play "${v['title'] ?? 'this lesson'}" in-app?'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx),
+                                child: const Text('Cancel'),
+                              ),
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                ),
+                                onPressed: () {
+                                  Navigator.pop(ctx);
+                                  context.push(
+                                    '/presentation/${v['id']}'
+                                    '?title=${Uri.encodeComponent(v['title'] ?? 'Lesson')}'
+                                    '&url=${Uri.encodeComponent(v['video_url'] ?? '')}'
+                                    '&thumb=${Uri.encodeComponent(v['thumbnail_url'] ?? '')}'
+                                    '&duration=${v['duration_secs'] ?? 0}',
+                                  );
+                                },
+                                child: const Text('Play'),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                       leading: Container(
                         width: 56, height: 44,
                         decoration: BoxDecoration(

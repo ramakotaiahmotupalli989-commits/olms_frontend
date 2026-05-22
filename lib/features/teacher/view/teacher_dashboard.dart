@@ -44,6 +44,13 @@ class _TeacherDashboardState extends State<TeacherDashboard> with SingleTickerPr
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => context.push('/messaging'),
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.chat),
+        label: const Text('Messages'),
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
@@ -117,7 +124,7 @@ class _TeacherDashboardState extends State<TeacherDashboard> with SingleTickerPr
       return GridView.count(
         shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
         crossAxisCount: crossCount, mainAxisSpacing: 12, crossAxisSpacing: 12,
-        childAspectRatio: c.maxWidth > 500 ? 2.0 : 1.5,
+        childAspectRatio: c.maxWidth > 800 ? 1.5 : (c.maxWidth > 400 ? 1.25 : 1.15),
         children: [
           KpiCard(
             title: 'Total Students', value: '${_data?['total_students'] ?? 0}',

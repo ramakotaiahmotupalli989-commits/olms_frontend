@@ -5,6 +5,7 @@ library;
 import 'package:go_router/go_router.dart';
 
 import '../../features/auth/view/login_page.dart';
+import '../../features/auth/view/splash_page.dart';
 import '../../features/dashboard/view/dashboard_shell.dart';
 import '../../features/super_admin/view/super_admin_dashboard.dart';
 import '../../features/principal/view/principal_dashboard.dart';
@@ -48,19 +49,26 @@ import '../../features/student/view/student_timetable_page.dart';
 import '../../features/teacher/view/teacher_schedule_page.dart';
 import '../../features/student/view/student_exam_results_page.dart';
 import '../../features/parent/view/parent_exam_results_page.dart';
+import '../../features/messaging/view/conversation_list_page.dart';
+import '../../features/messaging/view/conversation_detail_page.dart';
+import '../../features/messaging/view/new_conversation_page.dart';
 
 class AppRouter {
   AppRouter._();
 
   static final GoRouter router = GoRouter(
-    initialLocation: '/login',
+    initialLocation: '/splash',
     routes: [
       // ── Root Redirect ──
       GoRoute(
         path: '/',
-        redirect: (context, state) => '/login',
+        redirect: (context, state) => '/splash',
       ),
       // ── Auth ──
+      GoRoute(
+        path: '/splash',
+        builder: (context, state) => const SplashPage(),
+      ),
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginPage(),
@@ -143,6 +151,16 @@ class AppRouter {
             ),
           ),
           GoRoute(path: '/notifications', builder: (context, state) => const NotificationsPage()),
+
+          // Messaging
+          GoRoute(path: '/messaging', builder: (context, state) => const ConversationListPage()),
+          GoRoute(path: '/messaging/new', builder: (context, state) => const NewConversationPage()),
+          GoRoute(
+            path: '/messaging/:conversationId',
+            builder: (context, state) => ConversationDetailPage(
+              conversationId: int.parse(state.pathParameters['conversationId'] ?? '0'),
+            ),
+          ),
         ],
       ),
 

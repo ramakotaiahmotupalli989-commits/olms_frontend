@@ -35,6 +35,127 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
     return _students.where((s) => (s['name'] ?? '').toString().toLowerCase().contains(_searchQuery.toLowerCase())).toList();
   }
 
+  void _showAddStudentDialog() {
+    final nameCtrl = TextEditingController();
+    final rollCtrl = TextEditingController();
+    final emailCtrl = TextEditingController();
+    final phoneCtrl = TextEditingController();
+    final passCtrl = TextEditingController();
+    final addressCtrl = TextEditingController();
+    
+    final parentNameCtrl = TextEditingController();
+    final parentEmailCtrl = TextEditingController();
+    final parentPassCtrl = TextEditingController();
+    
+    bool isSubmitting = false;
+    int? selectedClassId = widget.classId;
+    final classesFuture = _repo.getList('/teacher/attendance/classes');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text('Onboard Student & Parent', style: GoogleFonts.outfit(fontWeight: FontWeight.w600)),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: FutureBuilder<List<dynamic>>(
+              future: classesFuture,
+              builder: (ctx, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final classes = snapshot.data ?? [];
+                
+                return SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Student Details', style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: AppColors.primary)),
+                      const SizedBox(height: 12),
+                      if (classes.isNotEmpty) ...[
+                        DropdownButtonFormField<int>(
+                          value: selectedClassId,
+                          decoration: InputDecoration(labelText: 'Class / Section *', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+                          items: classes.map((c) => DropdownMenuItem<int>(
+                            value: c['class_id'], 
+                            child: Text(c['label'].toString())
+                          )).toList(),
+                          onChanged: (v) => setDialogState(() => selectedClassId = v),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      TextField(controller: nameCtrl, decoration: InputDecoration(labelText: 'Full Name *', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)))),
+                      const SizedBox(height: 12),
+                      TextField(controller: rollCtrl, decoration: InputDecoration(labelText: 'Roll Number *', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)))),
+                      const SizedBox(height: 12),
+                      TextField(controller: emailCtrl, decoration: InputDecoration(labelText: 'Email *', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)))),
+                      const SizedBox(height: 12),
+                      TextField(controller: phoneCtrl, decoration: InputDecoration(labelText: 'Phone (Used for both) *', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)))),
+                      const SizedBox(height: 12),
+                      TextField(controller: addressCtrl, decoration: InputDecoration(labelText: 'Address (Used for both) *', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)))),
+                      const SizedBox(height: 12),
+                      TextField(controller: passCtrl, decoration: InputDecoration(labelText: 'Student Password *', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)))),
+                      
+                      const SizedBox(height: 24),
+                      Text('Parent Details', style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: AppColors.primary)),
+                      const SizedBox(height: 12),
+                      TextField(controller: parentNameCtrl, decoration: InputDecoration(labelText: 'Parent Full Name *', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)))),
+                      const SizedBox(height: 12),
+                      TextField(controller: parentEmailCtrl, decoration: InputDecoration(labelText: 'Parent Email *', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)))),
+                      const SizedBox(height: 12),
+                      TextField(controller: parentPassCtrl, decoration: InputDecoration(labelText: 'Parent Password *', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)))),
+                    ],
+                  ),
+                );
+              }
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: isSubmitting ? null : () async {
+                if (nameCtrl.text.isEmpty || rollCtrl.text.isEmpty || emailCtrl.text.isEmpty || 
+                    phoneCtrl.text.isEmpty || passCtrl.text.isEmpty || addressCtrl.text.isEmpty ||
+                    parentNameCtrl.text.isEmpty || parentEmailCtrl.text.isEmpty || parentPassCtrl.text.isEmpty || selectedClassId == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('All fields are required!'), backgroundColor: AppColors.error));
+                  return;
+                }
+                setDialogState(() => isSubmitting = true);
+                try {
+                  final q = '?name=${Uri.encodeComponent(nameCtrl.text)}&class_id=$selectedClassId'
+                      '&roll_number=${Uri.encodeComponent(rollCtrl.text)}'
+                      '&email=${Uri.encodeComponent(emailCtrl.text)}'
+                      '&phone=${Uri.encodeComponent(phoneCtrl.text)}'
+                      '&password=${Uri.encodeComponent(passCtrl.text)}'
+                      '&address=${Uri.encodeComponent(addressCtrl.text)}'
+                      '&parent_name=${Uri.encodeComponent(parentNameCtrl.text)}'
+                      '&parent_email=${Uri.encodeComponent(parentEmailCtrl.text)}'
+                      '&parent_phone=${Uri.encodeComponent(phoneCtrl.text)}'
+                      '&parent_password=${Uri.encodeComponent(parentPassCtrl.text)}'
+                      '&parent_address=${Uri.encodeComponent(addressCtrl.text)}';
+                  await _repo.post('/teacher/students$q');
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Student & Parent accounts created successfully'), backgroundColor: AppColors.success));
+                  }
+                  _load();
+                } catch (e) {
+                  setDialogState(() => isSubmitting = false);
+                  if (ctx.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error adding student: $e'), backgroundColor: AppColors.error));
+                  }
+                }
+              },
+              child: isSubmitting ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Text('Onboard'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -42,7 +163,7 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
       appBar: AppBar(
         title: const Text('Class Roster'),
         actions: [
-          IconButton(icon: const Icon(Icons.person_add), onPressed: () {}),
+          IconButton(icon: const Icon(Icons.person_add), onPressed: _showAddStudentDialog),
         ],
       ),
       body: Column(children: [

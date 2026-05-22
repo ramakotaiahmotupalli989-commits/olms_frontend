@@ -24,11 +24,8 @@ class _LoginPageState extends ConsumerState<LoginPage>
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _phoneController = TextEditingController();
-
   bool _isLoading = false;
   bool _obscurePassword = true;
-  bool _isOtpMode = false;
 
   late AnimationController _fadeController;
   late AnimationController _bgController;
@@ -57,7 +54,6 @@ class _LoginPageState extends ConsumerState<LoginPage>
     _bgController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
-    _phoneController.dispose();
     super.dispose();
   }
 
@@ -98,13 +94,18 @@ class _LoginPageState extends ConsumerState<LoginPage>
       if (mounted) context.go(targetPath);
     } catch (e) {
       if (mounted) {
+        final errStr = e.toString();
+        final msg = errStr.contains('401') 
+            ? 'Incorrect email or password. Please try again.' 
+            : 'Login failed: $errStr';
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
               children: [
                 const Icon(Icons.error_outline, color: Colors.white, size: 18),
                 const SizedBox(width: 10),
-                Expanded(child: Text('Login failed: ${e.toString()}', style: GoogleFonts.inter(fontSize: 13))),
+                Expanded(child: Text(msg, style: GoogleFonts.inter(fontSize: 13))),
               ],
             ),
             backgroundColor: AppColors.error,
@@ -246,27 +247,8 @@ class _LoginPageState extends ConsumerState<LoginPage>
                         Text('Sign in to your EduCinema account', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary)),
                         const SizedBox(height: 32),
 
-                        // ── Toggle ──
-                        Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: AppColors.surfaceVariant,
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: Row(
-                            children: [
-                              _tabToggle('Email', !_isOtpMode, () => setState(() => _isOtpMode = false)),
-                              _tabToggle('Phone OTP', _isOtpMode, () => setState(() => _isOtpMode = true)),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 28),
-
                         // ── Fields ──
-                        AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 300),
-                          child: _isOtpMode ? _buildPhoneField() : _buildEmailFields(),
-                        ),
+                        _buildEmailFields(),
                         const SizedBox(height: 28),
 
                         // ── Login Button ──
@@ -292,7 +274,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
                                 child: _isLoading
                                     ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
                                     : Text(
-                                        _isOtpMode ? 'Send OTP' : 'Sign In',
+                                        'Sign In',
                                         style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white),
                                       ),
                               ),
@@ -301,11 +283,10 @@ class _LoginPageState extends ConsumerState<LoginPage>
                         ),
                         const SizedBox(height: 16),
 
-                        if (!_isOtpMode)
-                          TextButton(
-                            onPressed: () {},
-                            child: Text('Forgot Password?', style: GoogleFonts.inter(color: const Color(0xFF667EEA), fontWeight: FontWeight.w500, fontSize: 13)),
-                          ),
+                        TextButton(
+                          onPressed: () {},
+                          child: Text('Forgot Password?', style: GoogleFonts.inter(color: const Color(0xFF667EEA), fontWeight: FontWeight.w500, fontSize: 13)),
+                        ),
                       ],
                     ),
                   ),
@@ -318,31 +299,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
     );
   }
 
-  Widget _tabToggle(String text, bool active, VoidCallback onTap) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 11),
-          decoration: BoxDecoration(
-            color: active ? Colors.white : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
-            boxShadow: active ? [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 8, offset: const Offset(0, 2))] : null,
-          ),
-          child: Text(
-            text,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
-              fontWeight: active ? FontWeight.w600 : FontWeight.w400,
-              color: active ? AppColors.textPrimary : AppColors.textSecondary,
-              fontSize: 13,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+
 
   Widget _buildEmailFields() {
     return Column(
@@ -389,29 +346,5 @@ class _LoginPageState extends ConsumerState<LoginPage>
     );
   }
 
-  Widget _buildPhoneField() {
-    return Column(
-      key: const ValueKey('phone'),
-      children: [
-        TextFormField(
-          controller: _phoneController,
-          keyboardType: TextInputType.phone,
-          style: GoogleFonts.inter(fontSize: 14),
-          decoration: InputDecoration(
-            labelText: 'Phone Number',
-            labelStyle: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary),
-            prefixIcon: const Icon(Icons.phone_outlined, size: 20),
-            prefixText: '+91 ',
-            prefixStyle: GoogleFonts.inter(fontSize: 14, color: AppColors.textPrimary),
-            filled: true,
-            fillColor: AppColors.surfaceVariant,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFF667EEA), width: 2)),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          ),
-          validator: (v) => v == null || v.length != 10 ? 'Enter 10-digit number' : null,
-        ),
-      ],
-    );
-  }
+
 }

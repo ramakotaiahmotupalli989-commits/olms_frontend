@@ -120,9 +120,10 @@ class _PrincipalDashboardState extends State<PrincipalDashboard> with SingleTick
   Widget _buildKpis() {
     return LayoutBuilder(builder: (context, c) {
       final crossCount = c.maxWidth > 600 ? 4 : 2;
+      final aspectRatio = c.maxWidth > 800 ? 1.5 : (c.maxWidth > 400 ? 1.25 : 1.15);
       return GridView.count(
         shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
-        crossAxisCount: crossCount, mainAxisSpacing: 12, crossAxisSpacing: 12, childAspectRatio: 1.5,
+        crossAxisCount: crossCount, mainAxisSpacing: 12, crossAxisSpacing: 12, childAspectRatio: aspectRatio,
         children: [
           KpiCard(title: 'Active Students', value: '${_data?['active_students'] ?? 0}', icon: Icons.school_rounded, color: const Color(0xFF667EEA)),
           KpiCard(title: 'Active Teachers', value: '${_data?['active_teachers'] ?? 0}', icon: Icons.person_rounded, color: const Color(0xFF43E97B)),

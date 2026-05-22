@@ -175,7 +175,8 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> with SingleTi
     return LayoutBuilder(
       builder: (context, constraints) {
         final crossCount = constraints.maxWidth > 800 ? 4 : 2;
-        final aspectRatio = constraints.maxWidth > 400 ? 1.5 : 1.3;
+        // Adjusted aspect ratio: Use a more square ratio on mobiles to prevent text cut-off when font scaling is active.
+        final aspectRatio = constraints.maxWidth > 800 ? 1.5 : (constraints.maxWidth > 400 ? 1.25 : 1.15);
         return GridView.count(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),

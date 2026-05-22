@@ -65,6 +65,8 @@ class _StudentDashboardState extends State<StudentDashboard> with TickerProvider
                   const SizedBox(height: 20),
                   _buildContinueLearning(),
                   const SizedBox(height: 24),
+                  _buildAskDoubtCard(),
+                  const SizedBox(height: 24),
                   _buildSubjectsGrid(),
                   const SizedBox(height: 24),
                   _buildPendingAssignments(),
@@ -421,4 +423,67 @@ class _StudentDashboardState extends State<StudentDashboard> with TickerProvider
           )).toList()),
     ]);
   }
+
+  Widget _buildAskDoubtCard() {
+    return GestureDetector(
+      onTap: () => context.push('/messaging/new'),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [AppColors.info, Color(0xFF0284C7)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.info.withValues(alpha: 0.3),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.help_outline_rounded, color: Colors.white, size: 28),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Ask a Doubt',
+                    style: GoogleFonts.outfit(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Stuck on a topic? Message your teachers for help.',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      color: Colors.white.withValues(alpha: 0.8),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(Icons.chevron_right_rounded, color: Colors.white),
+          ],
+        ),
+      ),
+    );
+  }
 }
+

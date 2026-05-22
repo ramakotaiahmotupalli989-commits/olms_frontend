@@ -41,6 +41,13 @@ class _ChapterVideosPageState extends State<ChapterVideosPage> {
       appBar: AppBar(
         title: Text(widget.chapterTitle, style: GoogleFonts.outfit(fontWeight: FontWeight.w700)),
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => context.push('/messaging/new'),
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.chat_bubble_outline),
+        label: const Text('Ask Doubt'),
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _videos.isEmpty
@@ -75,12 +82,33 @@ class _ChapterVideosPageState extends State<ChapterVideosPage> {
       ),
       child: InkWell(
         onTap: () {
-          context.push(
-            '/presentation/${video['id']}'
-            '?title=${Uri.encodeComponent(video['title'] ?? 'Lesson')}'
-            '&url=${Uri.encodeComponent(video['video_url'] ?? '')}'
-            '&thumb=${Uri.encodeComponent(video['thumbnail_url'] ?? '')}'
-            '&duration=${video['duration_secs'] ?? 0}',
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              backgroundColor: AppColors.surface,
+              title: Text('Play Video?', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.white)),
+              content: Text('Do you want to play "${video['title'] ?? 'this lesson'}"?', style: GoogleFonts.inter(color: Colors.white70)),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    context.push(
+                      '/presentation/${video['id']}'
+                      '?title=${Uri.encodeComponent(video['title'] ?? 'Lesson')}'
+                      '&url=${Uri.encodeComponent(video['video_url'] ?? '')}'
+                      '&thumb=${Uri.encodeComponent(video['thumbnail_url'] ?? '')}'
+                      '&duration=${video['duration_secs'] ?? 0}',
+                    );
+                  },
+                  child: const Text('Play', style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            ),
           );
         },
         borderRadius: BorderRadius.circular(20),

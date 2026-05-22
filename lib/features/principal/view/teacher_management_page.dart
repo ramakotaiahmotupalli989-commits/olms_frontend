@@ -201,32 +201,33 @@ class _TeacherManagementPageState extends State<TeacherManagementPage> {
             title: Text('Assignments for ${teacher['name']}', style: GoogleFonts.outfit(fontWeight: FontWeight.w600)),
             content: SizedBox(
               width: double.maxFinite,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Current Assignments:', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13)),
-                  const SizedBox(height: 8),
-                  if (currentAssignments.isEmpty)
-                    Text('No assignments yet', style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary)),
-                  ...currentAssignments.map((a) => Container(
-                    margin: const EdgeInsets.only(bottom: 4),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(8)),
-                    child: Row(children: [
-                      Expanded(child: Text('Class ${a['classroom']?['grade']}${a['classroom']?['section'] ?? ''} - ${a['subject']?['name']}', style: GoogleFonts.inter(fontSize: 12))),
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline, size: 16, color: AppColors.error),
-                        onPressed: () async {
-                          await _repo.delete('/principal/teachers/assignments/${a['id']}');
-                          final assigns = await _repo.getList('/principal/teachers/${teacher['id']}/assignments');
-                          setDialogState(() => currentAssignments = assigns);
-                        },
-                      ),
-                    ]),
-                  )),
-                  const Divider(height: 24),
-                  Text('Add New Assignment:', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13)),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Current Assignments:', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13)),
+                    const SizedBox(height: 8),
+                    if (currentAssignments.isEmpty)
+                      Text('No assignments yet', style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary)),
+                    ...currentAssignments.map((a) => Container(
+                      margin: const EdgeInsets.only(bottom: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(8)),
+                      child: Row(children: [
+                        Expanded(child: Text('${a['class_label'] ?? 'Unknown Class'} - ${a['subject_name'] ?? 'Unknown Subject'}', style: GoogleFonts.inter(fontSize: 12))),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, size: 16, color: AppColors.error),
+                          onPressed: () async {
+                            await _repo.delete('/principal/teachers/assignments/${a['id']}');
+                            final assigns = await _repo.getList('/principal/teachers/${teacher['id']}/assignments');
+                            setDialogState(() => currentAssignments = assigns);
+                          },
+                        ),
+                      ]),
+                    )),
+                    const Divider(height: 24),
+                    Text('Add New Assignment:', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13)),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<int>(
                     isExpanded: true,
@@ -250,6 +251,7 @@ class _TeacherManagementPageState extends State<TeacherManagementPage> {
                 ],
               ),
             ),
+          ),
             actions: [
               TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
               ElevatedButton(

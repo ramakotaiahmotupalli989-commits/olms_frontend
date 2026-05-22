@@ -141,9 +141,9 @@ class _WatchHoursPageState extends State<WatchHoursPage> {
   }
 
   Widget _buildSchoolCard(Map<String, dynamic> s) {
-    final hours = (s['total_watch_hours'] ?? 0).toDouble();
+    final hours = _parseToDouble(s['total_watch_hours']);
     final viewers = s['active_viewers'] ?? 0;
-    final avgHrs = (s['avg_hours_per_student'] ?? 0).toDouble();
+    final avgHrs = _parseToDouble(s['avg_hours_per_student']);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -281,7 +281,7 @@ class _WatchHoursPageState extends State<WatchHoursPage> {
                           itemCount: students.length,
                           itemBuilder: (_, i) {
                             final st = students[i];
-                            final hrs = (st['total_watch_hours'] ?? 0).toDouble();
+                            final hrs = _parseToDouble(st['total_watch_hours']);
                             final videos = st['videos_watched'] ?? 0;
                             return ListTile(
                               leading: CircleAvatar(
@@ -318,8 +318,15 @@ class _WatchHoursPageState extends State<WatchHoursPage> {
     }
   }
 
+  double _parseToDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value) ?? 0.0;
+    return 0.0;
+  }
+
   String _formatHours(dynamic value) {
-    final hours = (value ?? 0).toDouble();
+    final hours = _parseToDouble(value);
     if (hours >= 1) return '${hours.toStringAsFixed(1)}h';
     final mins = (hours * 60).round();
     return '${mins}m';

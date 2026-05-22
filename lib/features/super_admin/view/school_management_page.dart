@@ -3,6 +3,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/shared_widgets.dart';
@@ -43,7 +44,7 @@ class _SchoolManagementPageState extends State<SchoolManagementPage> {
   }
 
   Future<void> _handleSuspend(Map<String, dynamic> school) async {
-    final active = school['is_active'] ?? true;
+    final active = (school['is_active'] == true) && (school['subscription_status'] != 'suspended');
     final confirmed = await _showConfirmDialog(
       title: active ? 'Suspend School' : 'Reactivate School',
       message: 'Are you sure you want to ${active ? 'suspend' : 'reactivate'} "${school['name']}"?',
@@ -56,7 +57,7 @@ class _SchoolManagementPageState extends State<SchoolManagementPage> {
         if (active) {
           await _repo.post('/schools/${school['id']}/suspend');
         } else {
-          await _repo.patch('/schools/${school['id']}', data: {'is_active': true, 'subscription_status': 'active'});
+          await _repo.post('/schools/${school['id']}/reactivate');
         }
         _load();
       } catch (e) {
@@ -125,7 +126,7 @@ class _SchoolManagementPageState extends State<SchoolManagementPage> {
   }
 
   Widget _buildSchoolCard(Map<String, dynamic> s) {
-    final active = s['is_active'] ?? true;
+    final active = (s['is_active'] == true) && (s['subscription_status'] != 'suspended');
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -150,14 +151,16 @@ class _SchoolManagementPageState extends State<SchoolManagementPage> {
             const SizedBox(height: 4),
             Text('${s['city'] ?? ''}, ${s['state'] ?? ''} • ${s['board'] ?? ''}', style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary)),
             const SizedBox(height: 8),
-            Row(
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
               children: [
                 StatusBadge(
                   label: s['subscription_status']?.toUpperCase() ?? 'NONE',
                   color: s['subscription_status'] == 'active' ? AppColors.success : AppColors.error,
                 ),
-                const SizedBox(width: 8),
-                if (!active) StatusBadge(label: 'SUSPENDED', color: AppColors.error),
+                if (!active && s['subscription_status'] != 'suspended')
+                  StatusBadge(label: 'SUSPENDED', color: AppColors.error),
               ],
             ),
           ],
@@ -176,6 +179,7 @@ class _SchoolManagementPageState extends State<SchoolManagementPage> {
           onSelected: (v) {
             if (v == 'suspend') _handleSuspend(s);
             if (v == 'principal') _showAddPrincipalDialog(s);
+            if (v == 'edit') _showEditSchoolDialog(s);
           },
         ),
       ),
@@ -230,11 +234,98 @@ class _SchoolManagementPageState extends State<SchoolManagementPage> {
                     _load();
                   }
                 } catch (e) {
-                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                  String errMsg = e.toString();
+                  if (e is DioException && e.response?.data is Map) {
+                    final detail = e.response?.data['detail'];
+                    if (detail != null) {
+                      errMsg = detail.toString();
+                    }
+                  }
+                  if (errMsg.toLowerCase().contains('maximum of 3') || 
+                      errMsg.toLowerCase().contains('max limit') || 
+                      errMsg.toLowerCase().contains('limit')) {
+                    errMsg = 'Maximum limit of 3 principal/admin accounts reached.';
+                  }
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text(errMsg),
+                      backgroundColor: AppColors.error,
+                    ));
+                  }
                 }
               }
             },
             child: const Text('Create Account'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditSchoolDialog(Map<String, dynamic> school) {
+    final nameCtrl = TextEditingController(text: school['name']);
+    final cityCtrl = TextEditingController(text: school['city']);
+    final stateCtrl = TextEditingController(text: school['state']);
+    final boardCtrl = TextEditingController(text: school['board'] ?? 'CBSE');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('Edit School Profile', style: GoogleFonts.outfit(fontWeight: FontWeight.w600)),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'School Name', prefixIcon: Icon(Icons.school_outlined, size: 20))),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(child: TextField(controller: cityCtrl, decoration: const InputDecoration(labelText: 'City', prefixIcon: Icon(Icons.location_city_rounded, size: 20)))),
+                  const SizedBox(width: 12),
+                  Expanded(child: TextField(controller: stateCtrl, decoration: const InputDecoration(labelText: 'State'))),
+                ],
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: boardCtrl.text,
+                decoration: const InputDecoration(labelText: 'Board', prefixIcon: Icon(Icons.account_balance_rounded, size: 20)),
+                items: ['CBSE', 'ICSE', 'State Board', 'International'].map((b) => DropdownMenuItem(value: b, child: Text(b))).toList(),
+                onChanged: (v) => boardCtrl.text = v ?? 'CBSE',
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              if (nameCtrl.text.isEmpty) return;
+
+              final confirmed = await _showConfirmDialog(
+                title: 'Confirm Changes',
+                message: 'Save changes for "${nameCtrl.text}"?',
+              );
+
+              if (confirmed == true && mounted) {
+                try {
+                  await _repo.patch('/schools/${school['id']}', data: {
+                    'name': nameCtrl.text,
+                    'city': cityCtrl.text,
+                    'state': stateCtrl.text,
+                    'board': boardCtrl.text,
+                  });
+                  if (mounted) {
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('School profile updated successfully!'), backgroundColor: AppColors.success));
+                    _load();
+                  }
+                } catch (e) {
+                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                }
+              }
+            },
+            child: const Text('Save'),
           ),
         ],
       ),

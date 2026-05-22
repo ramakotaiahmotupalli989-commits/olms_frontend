@@ -5,10 +5,11 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:async';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
-import 'package:youtube_player_flutter/youtube_player_flutter.dart';
+import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 import '../../../core/theme/app_theme.dart';
 
 class PresentationPlayerPage extends StatefulWidget {
@@ -42,6 +43,15 @@ class _PresentationPlayerPageState extends State<PresentationPlayerPage>
   bool _initError = false;
   late AnimationController _fadeController;
 
+  // YouTube custom controls state
+  bool _ytIsPlaying = false;
+  Duration _ytPosition = Duration.zero;
+  Duration _ytDuration = Duration.zero;
+  bool _ytShowControls = true;
+  bool _ytMuted = false;
+  Timer? _ytTimer;
+  StreamSubscription<YoutubePlayerValue>? _ytSubscription;
+
   @override
   void initState() {
     super.initState();
@@ -73,26 +83,33 @@ class _PresentationPlayerPageState extends State<PresentationPlayerPage>
       return;
     }
 
-    final ytId = YoutubePlayer.convertUrlToId(url);
-    if (ytId != null) {
+    String? extractYoutubeId(String u) {
+      if (u.contains('youtube.com') || u.contains('youtu.be')) {
+        final RegExp regex = RegExp(r'.*(?:youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=|shorts\/|live\/)([^#\&\?]+).*', caseSensitive: false, multiLine: false);
+        final match = regex.firstMatch(u);
+        return (match != null && match.groupCount >= 1) ? match.group(1) : null;
+      }
+      return null;
+    }
+
+    final ytId = extractYoutubeId(url);
+    if (ytId != null && ytId.isNotEmpty) {
       _isYoutube = true;
-      _youtubeController = YoutubePlayerController(
-        initialVideoId: ytId,
-        flags: const YoutubePlayerFlags(
-          autoPlay: true,
+      _youtubeController = YoutubePlayerController.fromVideoId(
+        videoId: ytId,
+        autoPlay: true,
+        params: const YoutubePlayerParams(
+          showControls: false,
           mute: false,
-          enableCaption: true,
-          hideControls: false,
-          controlsVisibleAtStart: true,
-          // ── Lock playback inside the app ──
-          disableDragSeek: false,
-          forceHD: false,
+          showFullscreenButton: false,
           loop: false,
-          isLive: false,
-          // Hide YouTube logo from controls bar
-          showLiveFullscreenButton: false,
+          strictRelatedVideos: true,
         ),
       );
+      _ytSubscription = _youtubeController!.stream.listen((event) {
+        _onYoutubeControllerUpdate();
+      });
+      _startYoutubeTimer();
       setState(() {
         _isInitializing = false;
         _initError = false;
@@ -104,6 +121,10 @@ class _PresentationPlayerPageState extends State<PresentationPlayerPage>
     try {
       _videoController = VideoPlayerController.networkUrl(Uri.parse(url));
       await _videoController!.initialize();
+
+      if (_videoController!.value.hasError || !_videoController!.value.isInitialized) {
+        throw Exception('Failed to initialize video player');
+      }
 
       _chewieController = ChewieController(
         videoPlayerController: _videoController!,
@@ -137,11 +158,56 @@ class _PresentationPlayerPageState extends State<PresentationPlayerPage>
     }
   }
 
+  void _onYoutubeControllerUpdate() {
+    if (!mounted || _youtubeController == null) return;
+    final state = _youtubeController!.value.playerState;
+    final isPlaying = state == PlayerState.playing;
+    final metaDuration = _youtubeController!.value.metaData.duration;
+    if (isPlaying != _ytIsPlaying || metaDuration != _ytDuration) {
+      setState(() {
+        _ytIsPlaying = isPlaying;
+        _ytDuration = metaDuration;
+      });
+    }
+  }
+
+  void _startYoutubeTimer() {
+    _ytTimer?.cancel();
+    _ytTimer = Timer.periodic(const Duration(milliseconds: 250), (timer) async {
+      if (!mounted || _youtubeController == null) {
+        timer.cancel();
+        return;
+      }
+      try {
+        final posSecs = await _youtubeController!.currentTime;
+        final durSecs = await _youtubeController!.duration;
+        if (mounted) {
+          setState(() {
+            _ytPosition = Duration(milliseconds: (posSecs * 1000).toInt());
+            if (durSecs > 0) {
+              _ytDuration = Duration(milliseconds: (durSecs * 1000).toInt());
+            }
+          });
+        }
+      } catch (e) {
+        // Safe to ignore
+      }
+    });
+  }
+
+  String _formatTime(int totalSecs) {
+    final m = totalSecs ~/ 60;
+    final s = totalSecs % 60;
+    return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+  }
+
   @override
   void dispose() {
+    _ytTimer?.cancel();
+    _ytSubscription?.cancel();
     _chewieController?.dispose();
     _videoController?.dispose();
-    _youtubeController?.dispose();
+    _youtubeController?.close();
     _fadeController.dispose();
     // Restore orientation
     SystemChrome.setPreferredOrientations([
@@ -187,71 +253,190 @@ class _PresentationPlayerPageState extends State<PresentationPlayerPage>
     );
   }
 
-  /// Embedded YouTube player with overlays that block the YouTube logo
-  /// and watermark links, keeping playback 100% inside the app.
+  /// Embedded YouTube player using youtube_player_iframe
+  /// Custom styled and wrapped in AbsorbPointer to block native clicks and redirects.
   Widget _buildYoutubePlayer() {
-    return Stack(
-      children: [
-        // The actual YouTube player — renders inside a WebView, never opens externally
-        YoutubePlayerBuilder(
-          player: YoutubePlayer(
-            controller: _youtubeController!,
-            showVideoProgressIndicator: true,
-            progressIndicatorColor: AppColors.primary,
-            bottomActions: [
-              CurrentPosition(),
-              const SizedBox(width: 8),
-              ProgressBar(
-                isExpanded: true,
-                colors: ProgressBarColors(
-                  playedColor: AppColors.primary,
-                  handleColor: AppColors.primary,
-                  bufferedColor: AppColors.primary.withValues(alpha: 0.3),
-                  backgroundColor: Colors.white24,
+    final currentSecs = _ytPosition.inSeconds;
+    final totalSecs = _ytDuration.inSeconds;
+    final progress = totalSecs > 0 ? currentSecs / totalSecs : 0.0;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _ytShowControls = !_ytShowControls;
+        });
+      },
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // 1. YouTube iframe in a non-interactive AbsorbPointer
+          AbsorbPointer(
+            absorbing: true,
+            child: Center(
+              child: AspectRatio(
+                aspectRatio: 16 / 9,
+                child: YoutubePlayer(
+                  controller: _youtubeController!,
                 ),
               ),
-              const SizedBox(width: 8),
-              RemainingDuration(),
-              const SizedBox(width: 8),
-              PlaybackSpeedButton(),
-            ],
+            ),
           ),
-          builder: (context, player) => player,
-        ),
 
-        // ── Block YouTube logo (top-left corner) ──
-        Positioned(
-          top: 0,
-          left: 0,
-          child: GestureDetector(
-            onTap: () {}, // swallow tap — prevents opening YouTube
-            behavior: HitTestBehavior.opaque,
-            child: const SizedBox(width: 100, height: 40),
+          // 2. Transparent gesture overlay covering the whole player
+          // This absorbs all taps and clicks, so they NEVER reach the iframe web view and can't redirect!
+          Positioned.fill(
+            child: Container(
+              color: Colors.transparent,
+            ),
           ),
-        ),
 
-        // ── Block YouTube watermark (bottom-right, above controls) ──
-        Positioned(
-          bottom: 48,
-          right: 0,
-          child: GestureDetector(
-            onTap: () {},
-            behavior: HitTestBehavior.opaque,
-            child: const SizedBox(width: 60, height: 36),
+          // 3. Play/Pause overlay button in the center
+          AnimatedOpacity(
+            opacity: _ytShowControls ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 300),
+            child: IgnorePointer(
+              ignoring: !_ytShowControls,
+              child: Center(
+                child: GestureDetector(
+                  onTap: () {
+                    if (_ytIsPlaying) {
+                      _youtubeController!.pauseVideo();
+                    } else {
+                      _youtubeController!.playVideo();
+                    }
+                  },
+                  child: Container(
+                    width: 70, height: 70,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.primary.withValues(alpha: 0.9),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withValues(alpha: 0.4),
+                          blurRadius: 20,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      _ytIsPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                      color: Colors.white,
+                      size: 38,
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ),
-        ),
 
-        // ── Block "Watch on YouTube" link (top-right) ──
-        Positioned(
-          top: 0,
-          right: 0,
-          child: GestureDetector(
-            onTap: () {},
-            behavior: HitTestBehavior.opaque,
-            child: const SizedBox(width: 140, height: 40),
+          // 4. Custom bottom player bar controls
+          AnimatedOpacity(
+            opacity: _ytShowControls ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 300),
+            child: IgnorePointer(
+              ignoring: !_ytShowControls,
+              child: Positioned(
+                left: 0, right: 0, bottom: 0,
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Colors.transparent, Colors.black.withValues(alpha: 0.85)],
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Progress slider
+                      SliderTheme(
+                        data: SliderThemeData(
+                          trackHeight: 4,
+                          thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                          overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+                          activeTrackColor: AppColors.primary,
+                          inactiveTrackColor: Colors.white24,
+                          thumbColor: AppColors.primary,
+                          overlayColor: AppColors.primary.withValues(alpha: 0.2),
+                        ),
+                        child: Slider(
+                          value: progress.clamp(0.0, 1.0),
+                          onChanged: (v) {
+                            final seekToSecs = (v * totalSecs).toDouble();
+                            _youtubeController!.seekTo(seconds: seekToSecs);
+                          },
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          Text(
+                            _formatTime(currentSecs),
+                            style: GoogleFonts.inter(fontSize: 12, color: Colors.white70),
+                          ),
+                          Text(
+                            ' / ${_formatTime(totalSecs)}',
+                            style: GoogleFonts.inter(fontSize: 12, color: Colors.white38),
+                          ),
+                          const Spacer(),
+                          // Replay 10s
+                          IconButton(
+                            onPressed: () {
+                              final target = (currentSecs - 10).clamp(0, totalSecs).toDouble();
+                              _youtubeController!.seekTo(seconds: target);
+                            },
+                            icon: const Icon(Icons.replay_10_rounded, color: Colors.white70, size: 20),
+                          ),
+                          // Play/Pause button
+                          IconButton(
+                            onPressed: () {
+                              if (_ytIsPlaying) {
+                                _youtubeController!.pauseVideo();
+                              } else {
+                                _youtubeController!.playVideo();
+                              }
+                            },
+                            icon: Icon(
+                              _ytIsPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                              color: Colors.white, size: 26,
+                            ),
+                          ),
+                          // Forward 10s
+                          IconButton(
+                            onPressed: () {
+                              final target = (currentSecs + 10).clamp(0, totalSecs).toDouble();
+                              _youtubeController!.seekTo(seconds: target);
+                            },
+                            icon: const Icon(Icons.forward_10_rounded, color: Colors.white70, size: 20),
+                          ),
+                          const SizedBox(width: 8),
+                          // Mute/Unmute
+                          IconButton(
+                            onPressed: () {
+                              setState(() {
+                                _ytMuted = !_ytMuted;
+                                if (_ytMuted) {
+                                  _youtubeController!.mute();
+                                } else {
+                                  _youtubeController!.unMute();
+                                }
+                              });
+                            },
+                            icon: Icon(
+                              _ytMuted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+                              color: Colors.white70, size: 20,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 

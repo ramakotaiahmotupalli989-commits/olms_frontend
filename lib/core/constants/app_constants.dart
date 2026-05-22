@@ -28,4 +28,17 @@ class AppConstants {
   static const int goldRank = 1;
   static const int silverRank = 2;
   static const int bronzeRank = 3;
+
+  // Messaging
+  static const String messagingConversations = '/messaging/conversations';
+  static const String messagingUnreadCount = '/messaging/unread-count';
+  static String conversationMessages(int id) => '/messaging/conversations/$id/messages';
+  static String conversationStatus(int id) => '/messaging/conversations/$id/status';
+  static String conversationDetail(int id) => '/messaging/conversations/$id';
+  static String deleteMessage(int convId, int msgId) => '/messaging/conversations/$convId/messages/$msgId';
+
+  // WebSocket
+  static String get messagingWebSocketUrl =>
+      baseUrl.replaceFirst('https://', 'wss://').replaceFirst('http://', 'ws://') +
+      '/ws/messaging';
 }

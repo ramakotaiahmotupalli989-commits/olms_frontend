@@ -87,11 +87,13 @@ class _DashboardShellState extends State<DashboardShell> {
           _MenuItem(Icons.account_balance_wallet_rounded, 'Salary Mgmt', '/principal/salaries'),
           _MenuItem(Icons.receipt_long_rounded, 'Fee Mgmt', '/principal/fees'),
           _MenuItem(Icons.calendar_view_week_rounded, 'Timetable', '/principal/timetable'),
+          _MenuItem(Icons.chat_rounded, 'Messages', '/messaging'),
           _MenuItem(Icons.notifications_rounded, 'Notifications', '/notifications'),
         ];
       case AppConstants.teacher:
         return const [
           _MenuItem(Icons.dashboard_rounded, 'Dashboard', '/teacher/dashboard'),
+          _MenuItem(Icons.people_alt_rounded, 'Class Roster', '/teacher/class/1/roster'),
           _MenuItem(Icons.play_lesson_rounded, 'Content Library', '/teacher/library'),
           _MenuItem(Icons.quiz_rounded, 'Quizzes & Tests', '/teacher/quizzes'),
           _MenuItem(Icons.home_work_rounded, 'Homework', '/teacher/homework'),
@@ -100,6 +102,7 @@ class _DashboardShellState extends State<DashboardShell> {
           _MenuItem(Icons.analytics_rounded, 'Analytics', '/teacher/analytics'),
           _MenuItem(Icons.account_balance_wallet_rounded, 'My Salary', '/teacher/salary'),
           _MenuItem(Icons.calendar_view_week_rounded, 'My Schedule', '/teacher/schedule'),
+          _MenuItem(Icons.chat_rounded, 'Messages', '/messaging'),
           _MenuItem(Icons.notifications_rounded, 'Notifications', '/notifications'),
         ];
       case AppConstants.student:
@@ -110,12 +113,14 @@ class _DashboardShellState extends State<DashboardShell> {
           _MenuItem(Icons.assignment_rounded, 'Exam Results', '/student/exam-results'),
           _MenuItem(Icons.receipt_long_rounded, 'Fee Status', '/student/fees'),
           _MenuItem(Icons.calendar_view_week_rounded, 'Timetable', '/student/timetable'),
+          _MenuItem(Icons.chat_rounded, 'Messages', '/messaging'),
           _MenuItem(Icons.notifications_rounded, 'Notifications', '/notifications'),
         ];
       case AppConstants.parent:
         return const [
           _MenuItem(Icons.dashboard_rounded, 'Dashboard', '/parent/dashboard'),
           _MenuItem(Icons.assignment_rounded, 'Exam Results', '/parent/exam-results'),
+          _MenuItem(Icons.chat_rounded, 'Messages', '/messaging'),
           _MenuItem(Icons.notifications_rounded, 'Notifications', '/notifications'),
         ];
       default:
@@ -667,7 +672,7 @@ class _DashboardShellState extends State<DashboardShell> {
     return 'Good evening, $_userName';
   }
 
-  // ── Horizontal Scrollable Bottom Nav ──
+  // ── Horizontally Scrollable Bottom Nav ──
   Widget _buildBottomNav(BuildContext context) {
     final items = _menuItems;
     final currentLocation = GoRouterState.of(context).uri.toString();
@@ -689,12 +694,14 @@ class _DashboardShellState extends State<DashboardShell> {
           height: 62,
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 8),
             child: Row(
               children: items.map((item) {
                 final isActive = currentLocation == item.route;
-                return _buildBottomNavItem(item, isActive);
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: _buildBottomNavItem(item, isActive),
+                );
               }).toList(),
             ),
           ),
@@ -704,10 +711,6 @@ class _DashboardShellState extends State<DashboardShell> {
   }
 
   Widget _buildBottomNavItem(_MenuItem item, bool isActive) {
-    final shortLabel = item.label.length > 12
-        ? item.label.split(' ').first
-        : item.label;
-
     return GestureDetector(
       onTap: () {
         if (!isActive) context.go(item.route);
@@ -716,7 +719,7 @@ class _DashboardShellState extends State<DashboardShell> {
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeInOut,
         margin: const EdgeInsets.symmetric(horizontal: 3),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         decoration: BoxDecoration(
           color: isActive ? AppColors.primary.withValues(alpha: 0.1) : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
@@ -735,9 +738,9 @@ class _DashboardShellState extends State<DashboardShell> {
             ),
             const SizedBox(height: 2),
             Text(
-              shortLabel,
+              item.label,
               style: GoogleFonts.inter(
-                fontSize: 9,
+                fontSize: 10,
                 fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
                 color: isActive ? AppColors.primary : AppColors.textSecondary,
               ),
