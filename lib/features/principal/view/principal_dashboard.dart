@@ -184,10 +184,7 @@ class _PrincipalDashboardState extends State<PrincipalDashboard> with SingleTick
               const SizedBox(width: 8),
               if (endDate.isNotEmpty) Text('Expires: $endDate', style: GoogleFonts.inter(fontSize: 11, color: Colors.white.withValues(alpha: 0.7))),
             ]),
-            if (amount != null) ...[
-              const SizedBox(height: 8),
-              Text('₹$amount', style: GoogleFonts.outfit(fontSize: 26, fontWeight: FontWeight.w800, color: Colors.white)),
-            ],
+            // Amount display hidden temporarily for principal dashboard
           ]),
         ),
         ElevatedButton(

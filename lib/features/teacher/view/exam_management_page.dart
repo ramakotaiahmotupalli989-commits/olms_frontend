@@ -31,6 +31,15 @@ class _ExamManagementPageState extends State<ExamManagementPage> {
   int? _selectedSubjectId;
   double _totalMarks = 100;
 
+  // Leaderboard specific state
+  int? _selectedLeadExamId;
+  int? _selectedLeadClassId;
+  bool _leadLoading = false;
+  List<dynamic> _leadResults = [];
+  double _leadAvgPercentage = 0;
+  int _leadPassCount = 0;
+  int _leadFailCount = 0;
+
   // Score map: studentId -> marks
   final Map<int, TextEditingController> _marksControllers = {};
   final Map<int, String?> _grades = {};
@@ -189,25 +198,41 @@ class _ExamManagementPageState extends State<ExamManagementPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('Exam Score Entry')),
-      body: Column(
-        children: [
-          _buildSelectors(),
-          Expanded(
-            child: _loading
-                ? const Center(child: CircularProgressIndicator())
-                : _students.isEmpty
-                    ? const EmptyState(
-                        icon: Icons.assignment_rounded,
-                        title: 'Select Exam & Class',
-                        subtitle: 'Choose an exam and class to start entering scores',
-                      )
-                    : _buildScoreTable(),
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          title: const Text('Exam Management'),
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: 'Score Entry'),
+              Tab(text: 'Class Leaderboard'),
+            ],
           ),
-          if (_students.isNotEmpty) _buildBottomActions(),
-        ],
+        ),
+        body: TabBarView(
+          children: [
+            Column(
+              children: [
+                _buildSelectors(),
+                Expanded(
+                  child: _loading
+                      ? const Center(child: CircularProgressIndicator())
+                      : _students.isEmpty
+                          ? const EmptyState(
+                              icon: Icons.assignment_rounded,
+                              title: 'Select Exam & Class',
+                              subtitle: 'Choose an exam and class to start entering scores',
+                            )
+                          : _buildScoreTable(),
+                ),
+                if (_students.isNotEmpty) _buildBottomActions(),
+              ],
+            ),
+            _buildLeaderboardTab(),
+          ],
+        ),
       ),
     );
   }
@@ -460,5 +485,269 @@ class _ExamManagementPageState extends State<ExamManagementPage> {
         ),
       ),
     );
+  }
+
+  // ──────────────────────────────────────────────
+  // CLASS LEADERBOARD TAB
+  // ──────────────────────────────────────────────
+  Future<void> _loadLeaderboard() async {
+    if (_selectedLeadExamId == null || _selectedLeadClassId == null) return;
+    setState(() => _leadLoading = true);
+    try {
+      final data = await _repo.get('/exams/$_selectedLeadExamId/class/$_selectedLeadClassId/results');
+      _leadResults = (data['students'] as List?) ?? [];
+      
+      if (_leadResults.isEmpty) {
+        _leadAvgPercentage = 0;
+        _leadPassCount = 0;
+        _leadFailCount = 0;
+      } else {
+        double totalPct = 0;
+        _leadPassCount = 0;
+        _leadFailCount = 0;
+        for (var s in _leadResults) {
+          final pct = (s['percentage'] ?? 0).toDouble();
+          totalPct += pct;
+          if (pct >= 40) {
+            _leadPassCount++;
+          } else {
+            _leadFailCount++;
+          }
+        }
+        _leadAvgPercentage = totalPct / _leadResults.length;
+      }
+      setState(() => _leadLoading = false);
+    } catch (e) {
+      debugPrint('[ExamMgmt] Load leaderboard error: $e');
+      setState(() => _leadLoading = false);
+    }
+  }
+
+  Widget _buildLeaderboardTab() {
+    return Column(
+      children: [
+        _buildLeadSelectors(),
+        Expanded(
+          child: _leadLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _leadResults.isEmpty
+                  ? const EmptyState(
+                      icon: Icons.leaderboard_rounded,
+                      title: 'Select Exam & Class',
+                      subtitle: 'Choose an exam and class to view results with rankings',
+                    )
+                  : _buildLeadResultsList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLeadSelectors() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<int>(
+                  value: _selectedLeadExamId,
+                  decoration: InputDecoration(
+                    labelText: 'Exam',
+                    prefixIcon: const Icon(Icons.assignment_rounded, size: 18),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  ),
+                  style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary),
+                  items: _exams.map<DropdownMenuItem<int>>((e) {
+                    final typeLabel = (e['exam_type'] ?? '').toString().replaceAll('_', ' ');
+                    return DropdownMenuItem(
+                      value: e['id'] as int,
+                      child: Text('${e['name']} ($typeLabel)', overflow: TextOverflow.ellipsis),
+                    );
+                  }).toList(),
+                  onChanged: (val) {
+                    setState(() => _selectedLeadExamId = val);
+                    _loadLeaderboard();
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: DropdownButtonFormField<int>(
+                  value: _selectedLeadClassId,
+                  decoration: InputDecoration(
+                    labelText: 'Class',
+                    prefixIcon: const Icon(Icons.class_rounded, size: 18),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  ),
+                  style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary),
+                  items: _classes.map<DropdownMenuItem<int>>((c) {
+                    return DropdownMenuItem(
+                      value: c['class_id'] as int,
+                      child: Text('Class ${c['grade']}${c['section'] != null ? '-${c['section']}' : ''}'),
+                    );
+                  }).toList(),
+                  onChanged: (val) {
+                    setState(() => _selectedLeadClassId = val);
+                    _loadLeaderboard();
+                  },
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLeadResultsList() {
+    return Column(
+      children: [
+        _buildLeadKPIs(),
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            itemCount: _leadResults.length,
+            itemBuilder: (context, index) {
+              final student = _leadResults[index];
+              final rank = student['rank'] ?? (index + 1);
+              final name = student['student_name'] ?? '';
+              final roll = student['roll_number'] ?? '';
+              final pct = (student['percentage'] ?? 0).toDouble();
+              final totalObtained = student['total_obtained'] ?? 0;
+              final totalMax = student['total_max'] ?? 0;
+              final subjects = (student['subjects'] as List?) ?? [];
+
+              Color rankColor;
+              IconData? rankIcon;
+              if (rank == 1) {
+                rankColor = AppColors.gold;
+                rankIcon = Icons.emoji_events_rounded;
+              } else if (rank == 2) {
+                rankColor = AppColors.silver;
+                rankIcon = Icons.emoji_events_rounded;
+              } else if (rank == 3) {
+                rankColor = AppColors.bronze;
+                rankIcon = Icons.emoji_events_rounded;
+              } else {
+                rankColor = AppColors.textSecondary;
+                rankIcon = null;
+              }
+
+              final pctColor = pct >= 80 ? AppColors.success
+                  : pct >= 60 ? AppColors.info
+                  : pct >= 40 ? AppColors.warning
+                  : AppColors.error;
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: rank <= 3 ? rankColor.withValues(alpha: 0.3) : Colors.grey.shade100,
+                    width: rank <= 3 ? 1.5 : 1,
+                  ),
+                  boxShadow: rank <= 3
+                      ? [BoxShadow(color: rankColor.withValues(alpha: 0.1), blurRadius: 12, offset: const Offset(0, 4))]
+                      : null,
+                ),
+                child: ExpansionTile(
+                  tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                  childrenPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  leading: Container(
+                    width: 40, height: 40, alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      gradient: rank <= 3 ? LinearGradient(colors: [rankColor, rankColor.withValues(alpha: 0.6)]) : null,
+                      color: rank > 3 ? AppColors.surfaceVariant : null,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: rankIcon != null && rank <= 3
+                        ? Icon(rankIcon, color: Colors.white, size: 20)
+                        : Text('#$rank', style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w800, color: rank <= 3 ? Colors.white : AppColors.textSecondary)),
+                  ),
+                  title: Text(name, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis),
+                  subtitle: Wrap(spacing: 8, runSpacing: 2, children: [
+                    if (roll.toString().isNotEmpty) Text('Roll: $roll', style: GoogleFonts.inter(fontSize: 11, color: AppColors.textSecondary)),
+                    Text('${pct.toStringAsFixed(1)}%', style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w800, color: pctColor)),
+                    Text('($totalObtained/$totalMax)', style: GoogleFonts.inter(fontSize: 10, color: AppColors.textSecondary)),
+                  ]),
+                  children: [
+                    if (subjects.isNotEmpty)
+                      ...subjects.map<Widget>((subj) {
+                        final subjPct = (subj['percentage'] ?? 0).toDouble();
+                        final subjColor = subjPct >= 80 ? AppColors.success
+                            : subjPct >= 60 ? AppColors.info
+                            : subjPct >= 40 ? AppColors.warning
+                            : AppColors.error;
+
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Row(children: [
+                            Expanded(flex: 3, child: Text(subj['subject'] ?? '', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500))),
+                            Expanded(flex: 2, child: ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: LinearProgressIndicator(
+                                value: subjPct / 100, minHeight: 6,
+                                backgroundColor: Colors.grey.shade100,
+                                valueColor: AlwaysStoppedAnimation(subjColor),
+                              ),
+                            )),
+                            const SizedBox(width: 8),
+                            SizedBox(width: 55, child: Text(
+                              '${subj['marks_obtained']}/${subj['total_marks']}',
+                              textAlign: TextAlign.right,
+                              style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.w700, color: subjColor),
+                            )),
+                            if (subj['grade'] != null) Container(
+                              margin: const EdgeInsets.only(left: 8),
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(color: subjColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
+                              child: Text(subj['grade'], style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.w700, color: subjColor)),
+                            ),
+                          ]),
+                        );
+                      }),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLeadKPIs() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      color: Colors.white,
+      child: Row(children: [
+        _leadKPIItem('Avg', '${_leadAvgPercentage.toStringAsFixed(1)}%', const Color(0xFF667EEA)),
+        const SizedBox(width: 10),
+        _leadKPIItem('Pass', '$_leadPassCount', AppColors.success),
+        const SizedBox(width: 10),
+        _leadKPIItem('Fail', '$_leadFailCount', AppColors.error),
+        const SizedBox(width: 10),
+        _leadKPIItem('Total', '${_leadResults.length}', AppColors.info),
+      ]),
+    );
+  }
+
+  Widget _leadKPIItem(String label, String value, Color color) {
+    return Expanded(child: Container(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(children: [
+        Text(value, style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w800, color: color)),
+        Text(label, style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w600, color: color.withValues(alpha: 0.7))),
+      ]),
+    ));
   }
 }

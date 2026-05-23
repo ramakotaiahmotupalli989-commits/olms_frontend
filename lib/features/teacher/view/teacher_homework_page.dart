@@ -312,10 +312,93 @@ class _CreateAssignmentFormState extends State<_CreateAssignmentForm> {
   DateTime _dueDate = DateTime.now().add(const Duration(days: 3));
   bool _saving = false;
 
+  // Subjects, Chapters, and Videos tracking
+  List<dynamic> _subjects = [];
+  int? _selectedSubjectId;
+
+  List<dynamic> _contentData = []; // Cache of /teacher/content
+  List<dynamic> _chapters = [];
+  int? _selectedChapterId;
+
+  List<dynamic> _videos = [];
+  int? _selectedVideoId;
+
   @override
   void initState() {
     super.initState();
-    if (widget.classes.isNotEmpty) _classId = widget.classes[0]['class_id'];
+    _loadContentData();
+    if (widget.classes.isNotEmpty) {
+      _classId = widget.classes[0]['class_id'];
+      _loadSubjectsForClass(_classId!);
+    }
+  }
+
+  Future<void> _loadContentData() async {
+    try {
+      final list = await _repo.getList('/teacher/content');
+      setState(() {
+        _contentData = list;
+        _updateChaptersAndVideos();
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _loadSubjectsForClass(int classId) async {
+    try {
+      final list = await _repo.getList('/teacher/my-subjects', params: {'class_id': classId});
+      setState(() {
+        _subjects = list;
+        _selectedSubjectId = null;
+        _chapters = [];
+        _selectedChapterId = null;
+        _videos = [];
+        _selectedVideoId = null;
+        if (_subjects.isNotEmpty) {
+          _selectedSubjectId = _subjects[0]['subject_id'];
+          _updateChaptersAndVideos();
+        }
+      });
+    } catch (_) {}
+  }
+
+  void _updateChaptersAndVideos() {
+    setState(() {
+      _chapters = [];
+      _selectedChapterId = null;
+      _videos = [];
+      _selectedVideoId = null;
+
+      if (_contentData.isEmpty || _selectedSubjectId == null) return;
+
+      final matchedSubject = _contentData.firstWhere(
+        (s) => s['subject_id'] == _selectedSubjectId,
+        orElse: () => null,
+      );
+      if (matchedSubject != null) {
+        _chapters = matchedSubject['chapters'] ?? [];
+        if (_chapters.isNotEmpty) {
+          // Keep first option selectable or let users choose
+          _selectedChapterId = null; // Default to whole subject first
+        }
+      }
+    });
+  }
+
+  void _updateVideosForChapter() {
+    setState(() {
+      _videos = [];
+      _selectedVideoId = null;
+
+      if (_selectedChapterId == null) return;
+
+      final matchedChapter = _chapters.firstWhere(
+        (c) => c['chapter_id'] == _selectedChapterId,
+        orElse: () => null,
+      );
+      if (matchedChapter != null) {
+        _videos = matchedChapter['videos'] ?? [];
+      }
+    });
   }
 
   @override
@@ -335,9 +418,66 @@ class _CreateAssignmentFormState extends State<_CreateAssignmentForm> {
               final label = 'Class ${c['grade']}${c['section'] != null ? '-${c['section']}' : ''}';
               return DropdownMenuItem(value: c['class_id'] as int, child: Text(label));
             }).toList(),
-            onChanged: (v) => setState(() => _classId = v),
+            onChanged: (v) {
+              setState(() {
+                _classId = v;
+                _loadSubjectsForClass(v!);
+              });
+            },
           ),
         const SizedBox(height: 16),
+
+        // Subject selector
+        if (_subjects.isNotEmpty)
+          DropdownButtonFormField<int>(
+            value: _selectedSubjectId,
+            decoration: const InputDecoration(labelText: 'Subject', prefixIcon: Icon(Icons.book_rounded)),
+            items: _subjects.map<DropdownMenuItem<int>>((s) {
+              return DropdownMenuItem(value: s['subject_id'] as int, child: Text(s['subject_name'] ?? ''));
+            }).toList(),
+            onChanged: (v) {
+              setState(() {
+                _selectedSubjectId = v;
+                _updateChaptersAndVideos();
+              });
+            },
+          ),
+        const SizedBox(height: 16),
+
+        // Chapter selector (optional)
+        if (_chapters.isNotEmpty)
+          DropdownButtonFormField<int?>(
+            value: _selectedChapterId,
+            decoration: const InputDecoration(labelText: 'Chapter (optional)', prefixIcon: Icon(Icons.menu_book_rounded)),
+            items: [
+              const DropdownMenuItem<int?>(value: null, child: Text('Assign Whole Subject')),
+              ..._chapters.map<DropdownMenuItem<int?>>((c) {
+                return DropdownMenuItem(value: c['chapter_id'] as int, child: Text(c['title'] ?? ''));
+              }),
+            ],
+            onChanged: (v) {
+              setState(() {
+                _selectedChapterId = v;
+                _updateVideosForChapter();
+              });
+            },
+          ),
+        const SizedBox(height: 16),
+
+        // Video selector (optional, appears only if a chapter is selected)
+        if (_selectedChapterId != null && _videos.isNotEmpty)
+          DropdownButtonFormField<int?>(
+            value: _selectedVideoId,
+            decoration: const InputDecoration(labelText: 'Video (optional)', prefixIcon: Icon(Icons.play_circle_rounded)),
+            items: [
+              const DropdownMenuItem<int?>(value: null, child: Text('Assign Whole Chapter')),
+              ..._videos.map<DropdownMenuItem<int?>>((v) {
+                return DropdownMenuItem(value: v['id'] as int, child: Text(v['title'] ?? ''));
+              }),
+            ],
+            onChanged: (v) => setState(() => _selectedVideoId = v),
+          ),
+        if (_selectedChapterId != null && _videos.isNotEmpty) const SizedBox(height: 16),
 
         // Type selector
         DropdownButtonFormField<String>(
@@ -402,9 +542,9 @@ class _CreateAssignmentFormState extends State<_CreateAssignmentForm> {
   }
 
   Future<void> _submit() async {
-    if (_titleCtrl.text.isEmpty || _classId == null) {
+    if (_titleCtrl.text.isEmpty || _classId == null || _selectedSubjectId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in title and select a class'), backgroundColor: AppColors.warning),
+        const SnackBar(content: Text('Please fill in title, select class and subject'), backgroundColor: AppColors.warning),
       );
       return;
     }
@@ -415,6 +555,9 @@ class _CreateAssignmentFormState extends State<_CreateAssignmentForm> {
         'assignment_type': _type,
         'title': _titleCtrl.text,
         'description': _descCtrl.text.isNotEmpty ? _descCtrl.text : null,
+        'subject_id': _selectedSubjectId,
+        'chapter_id': _selectedChapterId,
+        'video_id': _selectedVideoId,
         'due_date': _dueDate.toUtc().toIso8601String(),
       });
       setState(() => _saving = false);

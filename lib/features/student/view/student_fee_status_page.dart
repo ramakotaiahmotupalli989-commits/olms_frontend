@@ -149,6 +149,7 @@ class _StudentFeeStatusPageState extends State<StudentFeeStatusPage> {
     final month = r['month'] ?? '';
     final year = r['year'] ?? '';
     final dueDate = r['due_date'];
+    final title = r['title'] ?? 'Tuition Fee';
     final progress = totalFee > 0 ? (paidAmt / (totalFee + fineAmt)).clamp(0.0, 1.0) : 0.0;
 
     return Container(
@@ -177,7 +178,10 @@ class _StudentFeeStatusPageState extends State<StudentFeeStatusPage> {
           )),
         ),
         title: Row(children: [
-          Expanded(child: Text(month.isNotEmpty ? '$month $year' : 'Fee #${r['id']}', style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis)),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title, style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis),
+            Text(month.isNotEmpty ? '$month $year' : 'Fee #${r['id']}', style: GoogleFonts.inter(fontSize: 11, color: AppColors.textSecondary)),
+          ])),
           const SizedBox(width: 8),
           StatusBadge(label: status, color: statusColor, showDot: true),
         ]),
@@ -198,9 +202,10 @@ class _StudentFeeStatusPageState extends State<StudentFeeStatusPage> {
             child: Column(children: [
               const Divider(height: 1),
               const SizedBox(height: 12),
+              _row('Fee Purpose', title, color: AppColors.featurePurple),
               _row('Total Fee', _currencyFmt.format(totalFee)),
               _row('Paid Amount', _currencyFmt.format(paidAmt), color: AppColors.success),
-              if (fineAmt > 0) _row('Fine', _currencyFmt.format(fineAmt), color: AppColors.error),
+              if (fineAmt > 0) _row('Fine', _currencyFmt.format(fineAmt), color: AppColors.warning),
               _row('Pending', _currencyFmt.format(pendingAmt), color: pendingAmt > 0 ? AppColors.error : AppColors.success, bold: true),
               if (dueDate != null) _row('Due Date', dueDate),
               if (r['payment_date'] != null) _row('Paid On', r['payment_date']),

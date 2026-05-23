@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/shared_widgets.dart';
 import '../../../core/network/api_repository.dart';
+import '../../ranking/view/exam_leaderboard_bottom_sheet.dart';
 
 class ParentExamResultsPage extends StatefulWidget {
   const ParentExamResultsPage({super.key});
@@ -248,6 +249,9 @@ class _ParentExamResultsPageState extends State<ParentExamResultsPage> {
     // Derive grade from pct
     String grade = pct >= 90 ? 'A+' : pct >= 80 ? 'A' : pct >= 70 ? 'B+' : pct >= 60 ? 'B' : pct >= 50 ? 'C' : pct >= 40 ? 'D' : 'F';
 
+    final rank = exam['rank'] ?? 0;
+    final totalStudents = exam['total_students'] ?? 0;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -269,6 +273,11 @@ class _ParentExamResultsPageState extends State<ParentExamResultsPage> {
           Text(examType.toUpperCase(), style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: pctColor)),
           Text('${pct.toStringAsFixed(1)}%', style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w800, color: pctColor)),
           Text('$totalObtained/$totalMax', style: GoogleFonts.inter(fontSize: 11, color: AppColors.textSecondary)),
+          if (rank > 0 && totalStudents > 0) Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(rank <= 3 ? Icons.emoji_events_rounded : Icons.leaderboard_rounded, size: 14, color: rank <= 3 ? AppColors.gold : AppColors.textSecondary),
+            const SizedBox(width: 3),
+            Text('Rank $rank/$totalStudents', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: rank <= 3 ? AppColors.gold : AppColors.textSecondary)),
+          ]),
         ]),
         children: [
           const Divider(height: 1),
@@ -307,6 +316,31 @@ class _ParentExamResultsPageState extends State<ParentExamResultsPage> {
               ]),
             );
           }),
+          const SizedBox(height: 8),
+          const Divider(height: 1),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                final child = _children.firstWhere((c) => c['id'] == _selectedChildId, orElse: () => null);
+                final classId = child != null ? child['class_id'] as int? : null;
+                final examId = exam['exam_id'] as int;
+                if (classId != null) {
+                  ExamLeaderboardBottomSheet.show(
+                    context,
+                    examId: examId,
+                    classId: classId,
+                    examName: examName,
+                    currentStudentId: _selectedChildId,
+                    highlightLabel: child['name'] ?? 'Child',
+                  );
+                }
+              },
+              icon: const Icon(Icons.leaderboard_rounded, size: 16),
+              label: const Text('View Class Leaderboard'),
+            ),
+          ),
         ],
       ),
     );

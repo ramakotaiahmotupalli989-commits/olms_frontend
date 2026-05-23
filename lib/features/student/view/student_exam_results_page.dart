@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/shared_widgets.dart';
 import '../../../core/network/api_repository.dart';
+import '../../ranking/view/exam_leaderboard_bottom_sheet.dart';
 
 class StudentExamResultsPage extends StatefulWidget {
   const StudentExamResultsPage({super.key});
@@ -187,6 +188,31 @@ class _StudentExamResultsPageState extends State<StudentExamResultsPage> {
               ]),
             );
           }),
+          const SizedBox(height: 8),
+          const Divider(height: 1),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                final classId = _data?['class_id'] as int?;
+                final studentId = _data?['student_id'] as int?;
+                final examId = exam['exam_id'] as int;
+                if (classId != null) {
+                  ExamLeaderboardBottomSheet.show(
+                    context,
+                    examId: examId,
+                    classId: classId,
+                    examName: examName,
+                    currentStudentId: studentId,
+                    highlightLabel: 'You',
+                  );
+                }
+              },
+              icon: const Icon(Icons.leaderboard_rounded, size: 16),
+              label: const Text('View Class Leaderboard'),
+            ),
+          ),
         ],
       ),
     );
