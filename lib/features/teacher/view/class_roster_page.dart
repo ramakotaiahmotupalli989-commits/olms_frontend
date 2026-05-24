@@ -76,11 +76,11 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
                       const SizedBox(height: 12),
                       if (classes.isNotEmpty) ...[
                         DropdownButtonFormField<int>(
-                          value: selectedClassId,
+                          value: classes.any((c) => c['class_id'] == selectedClassId) ? selectedClassId : null,
                           decoration: InputDecoration(labelText: 'Class / Section *', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
                           items: classes.map((c) => DropdownMenuItem<int>(
-                            value: c['class_id'], 
-                            child: Text(c['label'].toString())
+                            value: c['class_id'] as int?, 
+                            child: Text('Class ${c['grade'] ?? ''} - ${c['section'] ?? ''}')
                           )).toList(),
                           onChanged: (v) => setDialogState(() => selectedClassId = v),
                         ),

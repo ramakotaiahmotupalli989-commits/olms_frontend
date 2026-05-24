@@ -465,7 +465,7 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage>
     int late = _attendanceStatus.values.where((v) => v == 'late').length;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -4))],
@@ -474,9 +474,9 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage>
         child: Row(
           children: [
             _summaryChip('Present', present, AppColors.success),
-            const SizedBox(width: 12),
+            const SizedBox(width: 6),
             _summaryChip('Absent', absent, AppColors.error),
-            const SizedBox(width: 12),
+            const SizedBox(width: 6),
             _summaryChip('Late', late, AppColors.warning),
             const Spacer(),
             ElevatedButton.icon(
@@ -494,7 +494,7 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage>
 
   Widget _summaryChip(String label, int count, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(8),
@@ -502,9 +502,9 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage>
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('$count', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w800, color: color)),
+          Text('$count', style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w800, color: color)),
           const SizedBox(width: 4),
-          Text(label, style: GoogleFonts.inter(fontSize: 10, color: color, fontWeight: FontWeight.w600)),
+          Text(label, style: GoogleFonts.inter(fontSize: 9, color: color, fontWeight: FontWeight.w600)),
         ],
       ),
     );

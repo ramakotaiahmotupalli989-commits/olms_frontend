@@ -534,61 +534,63 @@ class _ChapterVideoSheetState extends State<_ChapterVideoSheet> {
       builder: (context, setDialogState) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Add Video Lesson'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: titleCtrl, decoration: const InputDecoration(labelText: 'Video Title', prefixIcon: Icon(Icons.title_rounded))),
-            const SizedBox(height: 12),
-            TextField(controller: urlCtrl, decoration: const InputDecoration(labelText: 'YouTube Video URL', prefixIcon: Icon(Icons.play_circle_outline_rounded), hintText: 'https://youtube.com/watch?v=...'),
-              onChanged: (val) => setDialogState(() {}),
-            ),
-            // YouTube thumbnail preview
-            if (_extractYoutubeId(urlCtrl.text.trim()) != null)
-              Container(
-                margin: const EdgeInsets.only(top: 8),
-                height: 100,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
-                  image: DecorationImage(
-                    image: NetworkImage('https://img.youtube.com/vi/${_extractYoutubeId(urlCtrl.text.trim())}/hqdefault.jpg'),
-                    fit: BoxFit.cover,
-                  ),
-                ),
-                child: Align(
-                  alignment: Alignment.bottomRight,
-                  child: Container(
-                    margin: const EdgeInsets.all(6),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(color: AppColors.success, borderRadius: BorderRadius.circular(6)),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      const Icon(Icons.check_circle, color: Colors.white, size: 14),
-                      const SizedBox(width: 4),
-                      Text('YouTube link detected', style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.white)),
-                    ]),
-                  ),
-                ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: titleCtrl, decoration: const InputDecoration(labelText: 'Video Title', prefixIcon: Icon(Icons.title_rounded))),
+              const SizedBox(height: 12),
+              TextField(controller: urlCtrl, decoration: const InputDecoration(labelText: 'YouTube Video URL', prefixIcon: Icon(Icons.play_circle_outline_rounded), hintText: 'https://youtube.com/watch?v=...'),
+                onChanged: (val) => setDialogState(() {}),
               ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(child: TextField(controller: durationCtrl, decoration: const InputDecoration(labelText: 'Duration (s)', prefixIcon: Icon(Icons.timer_outlined), isDense: true))),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    value: language,
-                    isExpanded: true,
-                    decoration: const InputDecoration(labelText: 'Language', isDense: true),
-                    items: const [
-                      DropdownMenuItem(value: 'en', child: Text('English')),
-                      DropdownMenuItem(value: 'hi', child: Text('Hindi')),
-                      DropdownMenuItem(value: 'te', child: Text('Telugu')),
-                    ],
-                    onChanged: (v) => setDialogState(() => language = v!),
+              // YouTube thumbnail preview
+              if (_extractYoutubeId(urlCtrl.text.trim()) != null)
+                Container(
+                  margin: const EdgeInsets.only(top: 8),
+                  height: 100,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    image: DecorationImage(
+                      image: NetworkImage('https://img.youtube.com/vi/${_extractYoutubeId(urlCtrl.text.trim())}/hqdefault.jpg'),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  child: Align(
+                    alignment: Alignment.bottomRight,
+                    child: Container(
+                      margin: const EdgeInsets.all(6),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(color: AppColors.success, borderRadius: BorderRadius.circular(6)),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        const Icon(Icons.check_circle, color: Colors.white, size: 14),
+                        const SizedBox(width: 4),
+                        Text('YouTube link detected', style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.white)),
+                      ]),
+                    ),
                   ),
                 ),
-              ],
-            ),
-          ],
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(child: TextField(controller: durationCtrl, decoration: const InputDecoration(labelText: 'Duration (s)', prefixIcon: Icon(Icons.timer_outlined), isDense: true))),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      value: language,
+                      isExpanded: true,
+                      decoration: const InputDecoration(labelText: 'Language', isDense: true),
+                      items: const [
+                        DropdownMenuItem(value: 'en', child: Text('English')),
+                        DropdownMenuItem(value: 'hi', child: Text('Hindi')),
+                        DropdownMenuItem(value: 'te', child: Text('Telugu')),
+                      ],
+                      onChanged: (v) => setDialogState(() => language = v!),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
