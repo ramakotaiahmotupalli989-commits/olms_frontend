@@ -8,7 +8,7 @@ class AppConstants {
   static const String appVersion = '1.0.0';
 
   // API
-  static const String baseUrl = 'http://localhost:8000';
+  static const String baseUrl = 'https://olmsbackend-production.up.railway.app';
   static const String apiPrefix = '/api/v1';
 
   // Tokens
