@@ -532,11 +532,11 @@ class _ChapterVideoSheetState extends State<_ChapterVideoSheet> {
 
     showDialog(context: context, builder: (ctx) => StatefulBuilder(
       builder: (context, setDialogState) => AlertDialog(
+        scrollable: true,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Add Video Lesson'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
             children: [
               TextField(controller: titleCtrl, decoration: const InputDecoration(labelText: 'Video Title', prefixIcon: Icon(Icons.title_rounded))),
               const SizedBox(height: 12),
@@ -591,7 +591,6 @@ class _ChapterVideoSheetState extends State<_ChapterVideoSheet> {
               ),
             ],
           ),
-        ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           ElevatedButton(

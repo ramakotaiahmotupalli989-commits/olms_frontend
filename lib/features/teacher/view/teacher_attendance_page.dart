@@ -465,22 +465,27 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage>
     int late = _attendanceStatus.values.where((v) => v == 'late').length;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -4))],
       ),
       child: SafeArea(
+        left: false,
+        right: false,
         child: Row(
           children: [
             _summaryChip('Present', present, AppColors.success),
-            const SizedBox(width: 6),
+            const SizedBox(width: 4),
             _summaryChip('Absent', absent, AppColors.error),
-            const SizedBox(width: 6),
+            const SizedBox(width: 4),
             _summaryChip('Late', late, AppColors.warning),
             const Spacer(),
             ElevatedButton.icon(
               onPressed: _saving || _students.isEmpty ? null : _saveAttendance,
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
               icon: _saving
                   ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                   : const Icon(Icons.send_rounded, size: 16),
@@ -494,7 +499,7 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage>
 
   Widget _summaryChip(String label, int count, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(8),

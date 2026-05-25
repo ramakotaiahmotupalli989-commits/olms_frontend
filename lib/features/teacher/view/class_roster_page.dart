@@ -75,16 +75,46 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
                       Text('Student Details', style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: AppColors.primary)),
                       const SizedBox(height: 12),
                       if (classes.isNotEmpty) ...[
-                        DropdownButtonFormField<int>(
-                          value: classes.any((c) => c['class_id'] == selectedClassId) ? selectedClassId : null,
-                          decoration: InputDecoration(labelText: 'Class / Section *', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
-                          items: classes.map((c) => DropdownMenuItem<int>(
-                            value: c['class_id'] as int?, 
-                            child: Text('Class ${c['grade'] ?? ''} - ${c['section'] ?? ''}')
-                          )).toList(),
-                          onChanged: (v) => setDialogState(() => selectedClassId = v),
+                        Builder(
+                          builder: (context) {
+                            final uniqueClasses = <int, Map<String, dynamic>>{};
+                            for (var c in classes) {
+                              final idVal = c['class_id'];
+                              int? id;
+                              if (idVal is int) {
+                                id = idVal;
+                              } else if (idVal is String) {
+                                id = int.tryParse(idVal);
+                              }
+                              if (id != null) {
+                                uniqueClasses[id] = c;
+                              }
+                            }
+                            final hasSelected = uniqueClasses.containsKey(selectedClassId);
+                            return Column(
+                              children: [
+                                DropdownButtonFormField<int>(
+                                  value: hasSelected ? selectedClassId : null,
+                                  decoration: InputDecoration(
+                                    labelText: 'Class / Section *',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  items: uniqueClasses.entries.map((entry) {
+                                    final c = entry.value;
+                                    return DropdownMenuItem<int>(
+                                      value: entry.key,
+                                      child: Text('Class ${c['grade'] ?? ''} - ${c['section'] ?? ''}'),
+                                    );
+                                  }).toList(),
+                                  onChanged: (v) => setDialogState(() => selectedClassId = v),
+                                ),
+                                const SizedBox(height: 12),
+                              ],
+                            );
+                          }
                         ),
-                        const SizedBox(height: 12),
                       ],
                       TextField(controller: nameCtrl, decoration: InputDecoration(labelText: 'Full Name *', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)))),
                       const SizedBox(height: 12),
