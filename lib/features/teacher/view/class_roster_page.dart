@@ -4,8 +4,10 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/network/api_repository.dart';
+import '../../../core/widgets/shared_widgets.dart';
 
 class ClassRosterPage extends StatefulWidget {
   final int classId;
@@ -353,7 +355,15 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
             const PopupMenuItem(value: 'message', child: Text('Send Message')),
             PopupMenuItem(value: 'toggle', child: Text(active ? 'Deactivate' : 'Activate')),
           ],
-          onSelected: (v) {},
+          onSelected: (v) {
+            if (v == 'profile') {
+              _showStudentProfile(s['id'], s);
+            } else if (v == 'message') {
+              _handleSendMessage(s['id'], s['name'] ?? '');
+            } else if (v == 'toggle') {
+              _handleToggleActive(s['id'], s['name'] ?? '', active);
+            }
+          },
           icon: const Icon(Icons.more_vert, size: 20),
         ),
       ]),
@@ -366,5 +376,238 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
       const SizedBox(width: 3),
       Text(value, style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w500, color: color)),
     ]);
+  }
+
+  Future<void> _showStudentProfile(int studentId, Map<String, dynamic> briefData) async {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.75,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          builder: (_, controller) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: FutureBuilder<Map<String, dynamic>>(
+                future: _repo.get('/teacher/student/$studentId/profile'),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (snapshot.hasError) {
+                    return Center(child: Text('Error loading profile: ${snapshot.error}', style: GoogleFonts.inter(color: AppColors.error)));
+                  }
+                  
+                  final data = snapshot.data ?? {};
+                  final student = data['student'] ?? {};
+                  final chapters = (data['chapter_progress'] as List?) ?? [];
+                  final quizzes = (data['quiz_history'] as List?) ?? [];
+                  
+                  return ListView(
+                    controller: controller,
+                    padding: const EdgeInsets.all(24),
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 5,
+                          decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 30,
+                            backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                            child: Text((student['name'] ?? 'S')[0], style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(student['name'] ?? briefData['name'] ?? '', style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.w700)),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    if (student['roll_number'] != null) ...[
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(8)),
+                                        child: Text('Roll: #${student['roll_number']}', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+                                      ),
+                                      const SizedBox(width: 8),
+                                    ],
+                                    Text('Last Login: ${student['last_login'] ?? 'Never'}', style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary)),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      const SectionHeader(title: 'Contact Details'),
+                      GlassCard(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          children: [
+                            _buildInfoRow(Icons.email_outlined, 'Email', briefData['email'] ?? 'N/A'),
+                            const Divider(height: 24),
+                            _buildInfoRow(Icons.phone_outlined, 'Phone', briefData['phone'] ?? 'N/A'),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const SectionHeader(title: 'Chapter Progress'),
+                          StatusBadge(label: '${chapters.length} Chapters', color: AppColors.primary),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      if (chapters.isEmpty)
+                        const EmptyState(icon: Icons.video_library_outlined, title: 'No progress recorded', subtitle: 'This student hasn\'t watched any videos yet')
+                      else
+                        ...chapters.map((c) {
+                          final pct = (c['completion_percent'] ?? 0.0).toDouble();
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 10),
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: Colors.grey.shade100)),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.menu_book_rounded, color: AppColors.primary, size: 20),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(c['chapter_title'] ?? '', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600)),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(color: AppColors.success.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                                  child: Text('${pct.toInt()}% Completed', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.success)),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                      const SizedBox(height: 24),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const SectionHeader(title: 'Quiz Performance'),
+                          StatusBadge(label: '${quizzes.length} Quizzes', color: AppColors.secondary),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      if (quizzes.isEmpty)
+                        const EmptyState(icon: Icons.quiz_outlined, title: 'No quiz attempts', subtitle: 'This student hasn\'t taken any quizzes yet')
+                      else
+                        ...quizzes.map((q) {
+                          final score = (q['score'] ?? 0.0).toDouble();
+                          final total = (q['total_marks'] ?? 100.0).toDouble();
+                          final percent = total > 0 ? (score / total) * 100 : 0.0;
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 10),
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: Colors.grey.shade100)),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.assignment_turned_in_outlined, color: AppColors.secondary, size: 20),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text('Quiz ID: #${q['quiz_id']}', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600)),
+                                ),
+                                Text(
+                                  '${score.toInt()}/${total.toInt()} (${percent.toInt()}%)',
+                                  style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: percent >= 70 ? AppColors.success : AppColors.warning),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                    ],
+                  );
+                },
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: AppColors.textSecondary),
+        const SizedBox(width: 12),
+        Text(label, style: GoogleFonts.inter(fontSize: 14, color: AppColors.textSecondary)),
+        const Spacer(),
+        Text(value, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+      ],
+    );
+  }
+
+  Future<void> _handleSendMessage(int studentId, String studentName) async {
+    try {
+      final res = await _repo.get('/messaging/conversations');
+      final conversations = res['conversations'] as List?;
+      if (conversations != null) {
+        final match = conversations.firstWhere(
+          (c) => c['initiator'] != null && c['initiator']['id'] == studentId,
+          orElse: () => null,
+        );
+        if (match != null) {
+          if (mounted) {
+            context.push('/messaging/${match['id']}');
+          }
+          return;
+        }
+      }
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('No existing conversation with $studentName. Teachers can reply to existing student messages in the Messages tab.'),
+            backgroundColor: AppColors.info,
+          ),
+        );
+        context.push('/messaging');
+      }
+    } catch (e) {
+      if (mounted) {
+        context.push('/messaging');
+      }
+    }
+  }
+
+  Future<void> _handleToggleActive(int studentId, String studentName, bool currentStatus) async {
+    try {
+      await _repo.patch('/teacher/students/$studentId/toggle-active');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$studentName has been ${currentStatus ? 'deactivated' : 'activated'} successfully.'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+        _loadRoster();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update status: $e'), backgroundColor: AppColors.error),
+        );
+      }
+    }
   }
 }

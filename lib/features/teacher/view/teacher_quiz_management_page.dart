@@ -20,7 +20,6 @@ class _TeacherQuizManagementPageState extends State<TeacherQuizManagementPage> w
   bool _loading = true;
   List<dynamic> _quizzes = [];
   List<dynamic> _sessions = [];
-  List<dynamic> _myAssignments = [];
   List<dynamic> _subjects = [];
   List<dynamic> _classes = [];
 
@@ -38,11 +37,6 @@ class _TeacherQuizManagementPageState extends State<TeacherQuizManagementPage> w
       _sessions = await _repo.getList('/teacher/sessions');
       _subjects = await _repo.getList('/teacher/subjects');
       _classes = await _repo.getList('/teacher/classes');
-      try {
-        _myAssignments = await _repo.getList('/principal/teachers/me/assignments');
-      } catch (inner) {
-        debugPrint('[QuizMgmt] optional assignment load error: $inner');
-      }
       setState(() => _loading = false);
     } catch (e) {
       debugPrint('[QuizMgmt] Load error: $e');
@@ -194,9 +188,11 @@ class _TeacherQuizManagementPageState extends State<TeacherQuizManagementPage> w
                     'subject_id': selectedSubjectId,
                     'questions': questions,
                   });
-                  Navigator.pop(ctx);
+                  if (!mounted) return;
+                  Navigator.pop(context);
                   _load();
                 } catch (e) {
+                  if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
                 }
               },
@@ -250,8 +246,8 @@ class _TeacherQuizManagementPageState extends State<TeacherQuizManagementPage> w
     );
   }
 
-  void _showScheduleTestDialog() {
-    int? selectedQuizId;
+  void _showScheduleTestDialog({int? quizId}) {
+    int? selectedQuizId = quizId;
     int? selectedClassId;
     DateTime scheduledDate = DateTime.now().add(const Duration(hours: 1));
 
@@ -265,6 +261,7 @@ class _TeacherQuizManagementPageState extends State<TeacherQuizManagementPage> w
             children: [
               DropdownButtonFormField<int>(
                 decoration: const InputDecoration(labelText: 'Select Quiz'),
+                value: selectedQuizId,
                 items: _quizzes.map<DropdownMenuItem<int>>((q) => DropdownMenuItem(value: q['id'], child: Text(q['title']))).toList(),
                 onChanged: (v) => selectedQuizId = v,
               ),
@@ -307,9 +304,11 @@ class _TeacherQuizManagementPageState extends State<TeacherQuizManagementPage> w
                     'scheduled_at': scheduledDate.toUtc().toIso8601String(),
                     'due_at': scheduledDate.add(const Duration(hours: 2)).toUtc().toIso8601String(),
                   });
-                  Navigator.pop(ctx);
+                  if (!mounted) return;
+                  Navigator.pop(context);
                   _load();
                 } catch (e) {
+                  if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
                 }
               },
@@ -322,7 +321,141 @@ class _TeacherQuizManagementPageState extends State<TeacherQuizManagementPage> w
   }
 
   void _showQuizDetails(dynamic quiz) {
-    // Show questions preview
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(quiz['title'] ?? ''),
+        content: SizedBox(
+          width: 500,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (quiz['description'] != null && quiz['description'].toString().isNotEmpty) ...[
+                  Text(quiz['description'], style: GoogleFonts.inter(color: AppColors.textSecondary)),
+                  const SizedBox(height: 16),
+                ],
+                Text('Questions (${(quiz['questions'] as List).length})', style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 8),
+                ...((quiz['questions'] as List).asMap().entries.map((entry) {
+                  final idx = entry.key;
+                  final q = entry.value;
+                  final List<dynamic> opts = q['options'] ?? [];
+                  final int correctIdx = q['correct_option_index'] ?? 0;
+                  
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Q${idx + 1}: ${q['question_text'] ?? ''}', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 8),
+                        ...opts.asMap().entries.map((optEntry) {
+                          final oIdx = optEntry.key;
+                          final oVal = optEntry.value;
+                          final isCorrect = oIdx == correctIdx;
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  isCorrect ? Icons.check_circle : Icons.circle_outlined,
+                                  color: isCorrect ? AppColors.success : Colors.grey.shade400,
+                                  size: 16,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    oVal.toString(),
+                                    style: GoogleFonts.inter(
+                                      color: isCorrect ? AppColors.success : AppColors.textPrimary,
+                                      fontWeight: isCorrect ? FontWeight.w600 : FontWeight.w400,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                        if (q['explanation'] != null && q['explanation'].toString().isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Text('Explanation: ${q['explanation']}', style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary, fontStyle: FontStyle.italic)),
+                        ],
+                      ],
+                    ),
+                  );
+                })),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.delete_outline, color: AppColors.error),
+                onPressed: () async {
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (c) => AlertDialog(
+                      title: const Text('Delete Quiz'),
+                      content: const Text('Are you sure you want to delete this quiz?'),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+                          onPressed: () => Navigator.pop(c, true),
+                          child: const Text('Delete', style: TextStyle(color: Colors.white)),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirm == true) {
+                    try {
+                      await _repo.delete('/teacher/quizzes/${quiz['id']}');
+                      if (!mounted) return;
+                      Navigator.pop(context);
+                      _load();
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Quiz deleted successfully'), backgroundColor: AppColors.success));
+                    } catch (e) {
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
+                    }
+                  }
+                },
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.edit_outlined, size: 16),
+                label: const Text('Edit'),
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  _showEditQuizDialog(quiz);
+                },
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.event_available, size: 16),
+                label: const Text('Schedule'),
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  _showScheduleTestDialog(quizId: quiz['id']);
+                },
+              ),
+              const Spacer(),
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   void _showRankings(int sessionId) async {
@@ -360,6 +493,102 @@ class _TeacherQuizManagementPageState extends State<TeacherQuizManagementPage> w
           ),
         ),
         actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close'))],
+      ),
+    );
+  }
+
+  void _showEditQuizDialog(dynamic quiz) {
+    final titleCtrl = TextEditingController(text: quiz['title']);
+    final descCtrl = TextEditingController(text: quiz['description'] ?? '');
+    int? selectedSubjectId = quiz['subject_id'];
+    
+    // Convert questions to editable maps
+    List<Map<String, dynamic>> questions = [];
+    for (var q in (quiz['questions'] as List)) {
+      questions.add({
+        'question_text': q['question_text'],
+        'options': List<String>.from(q['options']),
+        'correct_option_index': q['correct_option_index'],
+        'explanation': q['explanation'],
+        'marks': q['marks'] ?? 1,
+      });
+    }
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Edit Quiz'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: titleCtrl, decoration: const InputDecoration(labelText: 'Quiz Title')),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<int>(
+                  decoration: const InputDecoration(labelText: 'Subject'),
+                  value: selectedSubjectId,
+                  items: _subjects.map<DropdownMenuItem<int>>((s) {
+                    final int id = s['id'] ?? 0;
+                    final String name = s['name'] ?? '';
+                    final String grade = s['grade'] ?? '';
+                    return DropdownMenuItem<int>(
+                      value: id,
+                      child: Text('$name (Class $grade)'),
+                    );
+                  }).toList(),
+                  onChanged: (v) => setDialogState(() => selectedSubjectId = v),
+                ),
+                const Divider(height: 32),
+                Text('Questions (${questions.length})', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+                ...questions.asMap().entries.map((entry) {
+                  final idx = entry.key;
+                  final q = entry.value;
+                  return ListTile(
+                    dense: true,
+                    title: Text(q['question_text'], maxLines: 1, overflow: TextOverflow.ellipsis),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete, size: 16),
+                      onPressed: () => setDialogState(() => questions.removeAt(idx)),
+                    ),
+                  );
+                }),
+                TextButton.icon(
+                  onPressed: () async {
+                    final newQ = await _showAddQuestionDialog();
+                    if (newQ != null) setDialogState(() => questions.add(newQ));
+                  },
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add Question'),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () async {
+                if (titleCtrl.text.isEmpty || questions.isEmpty || selectedSubjectId == null) return;
+                try {
+                  await _repo.put('/teacher/quizzes/${quiz['id']}', data: {
+                    'title': titleCtrl.text,
+                    'description': descCtrl.text,
+                    'subject_id': selectedSubjectId,
+                    'questions': questions,
+                  });
+                  if (!mounted) return;
+                  Navigator.pop(context);
+                  _load();
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Quiz updated successfully'), backgroundColor: AppColors.success));
+                } catch (e) {
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                }
+              },
+              child: const Text('Update Quiz'),
+            ),
+          ],
+        ),
       ),
     );
   }

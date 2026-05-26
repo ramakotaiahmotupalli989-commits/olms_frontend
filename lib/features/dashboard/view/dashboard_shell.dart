@@ -111,6 +111,7 @@ class _DashboardShellState extends State<DashboardShell> {
           _MenuItem(Icons.dashboard_rounded, 'Dashboard', '/student/dashboard'),
           _MenuItem(Icons.how_to_reg_rounded, 'Attendance', '/student/attendance'),
           _MenuItem(Icons.home_work_rounded, 'Homework', '/student/homework'),
+          _MenuItem(Icons.quiz_rounded, 'Quizzes & Tests', '/student/tests'),
           _MenuItem(Icons.assignment_rounded, 'Exam Results', '/student/exam-results'),
           _MenuItem(Icons.receipt_long_rounded, 'Fee Status', '/student/fees'),
           _MenuItem(Icons.calendar_view_week_rounded, 'Timetable', '/student/timetable'),

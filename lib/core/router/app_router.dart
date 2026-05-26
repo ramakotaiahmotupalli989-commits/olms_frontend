@@ -23,6 +23,8 @@ import '../../features/student/view/student_dashboard.dart';
 import '../../features/student/view/subject_chapters_page.dart';
 import '../../features/student/view/chapter_videos_page.dart';
 import '../../features/student/view/quiz_page.dart';
+import '../../features/student/view/student_tests_page.dart';
+import '../../features/student/view/test_taking_page.dart';
 import '../../features/parent/view/parent_dashboard.dart';
 import '../../features/ranking/view/ranking_page.dart';
 import '../../features/notifications/view/notifications_page.dart';
@@ -137,6 +139,7 @@ class AppRouter {
           GoRoute(path: '/student/fees', builder: (context, state) => const StudentFeeStatusPage()),
           GoRoute(path: '/student/timetable', builder: (context, state) => const StudentTimetablePage()),
           GoRoute(path: '/student/exam-results', builder: (context, state) => const StudentExamResultsPage()),
+          GoRoute(path: '/student/tests', builder: (context, state) => const StudentTestsPage()),
 
           // Parent
           GoRoute(path: '/parent/dashboard', builder: (context, state) => const ParentDashboard()),
@@ -168,6 +171,10 @@ class AppRouter {
       GoRoute(
         path: '/quiz/:quizId',
         builder: (context, state) => QuizPage(quizId: int.parse(state.pathParameters['quizId'] ?? '0')),
+      ),
+      GoRoute(
+        path: '/student/test-taking/:sessionId',
+        builder: (context, state) => TestTakingPage(sessionId: int.parse(state.pathParameters['sessionId'] ?? '0')),
       ),
       GoRoute(
         path: '/presentation/:videoId',

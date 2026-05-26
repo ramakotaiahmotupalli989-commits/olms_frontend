@@ -148,7 +148,9 @@ class _TeacherSalaryPageState extends State<TeacherSalaryPage> {
           decoration: BoxDecoration(
             gradient: LinearGradient(colors: status == 'Paid'
                 ? [const Color(0xFF43E97B), const Color(0xFF38F9D7)]
-                : [const Color(0xFFFF6B6B), const Color(0xFFFF8E53)]),
+                : status == 'Partial'
+                    ? [const Color(0xFFFFD93D), const Color(0xFFFFE082)]
+                    : [const Color(0xFFFF6B6B), const Color(0xFFFF8E53)]),
             borderRadius: BorderRadius.circular(14),
           ),
           child: Center(child: Text(monthName, style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white))),
@@ -170,6 +172,10 @@ class _TeacherSalaryPageState extends State<TeacherSalaryPage> {
               _row('Deductions', '- ${_currencyFmt.format(r['deductions'] ?? 0)}', color: AppColors.error),
               const Divider(height: 16),
               _row('Net Salary', _currencyFmt.format(r['net_salary'] ?? 0), bold: true),
+              if (status == 'Partial') ...[
+                _row('Paid Amount', _currencyFmt.format(r['paid_amount'] ?? 0), color: AppColors.success),
+                _row('Pending Amount', _currencyFmt.format((r['net_salary'] ?? 0) - (r['paid_amount'] ?? 0)), color: AppColors.error),
+              ],
               if (r['payment_date'] != null) _row('Payment Date', r['payment_date']),
               if (r['payment_method'] != null) _row('Method', r['payment_method']),
               if (r['transaction_id'] != null) _row('Transaction ID', r['transaction_id']),
