@@ -16,18 +16,42 @@ class ClassRosterPage extends StatefulWidget {
 
 class _ClassRosterPageState extends State<ClassRosterPage> {
   final _repo = ApiRepository();
+  List<dynamic> _classes = [];
+  int? _selectedClassId;
   List<dynamic> _students = [];
   bool _loading = true;
   String _searchQuery = '';
 
   @override
-  void initState() { super.initState(); _load(); }
+  void initState() {
+    super.initState();
+    _load();
+  }
 
   Future<void> _load() async {
+    setState(() => _loading = true);
     try {
-      _students = await _repo.getList('/teacher/class/${widget.classId}/roster');
+      _classes = await _repo.getList('/teacher/attendance/classes');
+      if (_classes.isNotEmpty) {
+        final hasClass = _classes.any((c) => c['class_id'] == widget.classId);
+        _selectedClassId = hasClass ? widget.classId : _classes[0]['class_id'];
+        await _loadRoster();
+      } else {
+        setState(() => _loading = false);
+      }
+    } catch (e) {
       setState(() => _loading = false);
-    } catch (e) { setState(() => _loading = false); }
+    }
+  }
+
+  Future<void> _loadRoster() async {
+    if (_selectedClassId == null) return;
+    try {
+      _students = await _repo.getList('/teacher/class/$_selectedClassId/roster');
+      setState(() => _loading = false);
+    } catch (e) {
+      setState(() => _loading = false);
+    }
   }
 
   List<dynamic> get _filteredStudents {
@@ -48,7 +72,7 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
     final parentPassCtrl = TextEditingController();
     
     bool isSubmitting = false;
-    int? selectedClassId = widget.classId;
+    int? selectedClassId = _selectedClassId ?? widget.classId;
     final classesFuture = _repo.getList('/teacher/attendance/classes');
 
     showDialog(
@@ -186,6 +210,50 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
     );
   }
 
+  Widget _buildClassSelector() {
+    if (_classes.isEmpty) return const SizedBox.shrink();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Colors.grey.shade100)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(colors: [AppColors.primary, AppColors.secondary]),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.class_rounded, color: Colors.white, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<int>(
+                value: _selectedClassId,
+                isExpanded: true,
+                style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                items: _classes.map<DropdownMenuItem<int>>((c) {
+                  final label = 'Class ${c['grade']}${c['section'] != null ? ' - ${c['section']}' : ''} (${c['student_count']} students)';
+                  return DropdownMenuItem(value: c['class_id'] as int, child: Text(label));
+                }).toList(),
+                onChanged: (val) {
+                  setState(() {
+                    _selectedClassId = val;
+                    _loading = true;
+                  });
+                  _loadRoster();
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -197,6 +265,7 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
         ],
       ),
       body: Column(children: [
+        _buildClassSelector(),
         // Search bar
         Padding(
           padding: const EdgeInsets.all(16),
@@ -213,11 +282,30 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
         Expanded(
           child: _loading
               ? const Center(child: CircularProgressIndicator())
-              : ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: _filteredStudents.length,
-                  itemBuilder: (_, i) => _buildStudentCard(_filteredStudents[i]),
-                ),
+              : _filteredStudents.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.people_outline, size: 48, color: Colors.grey.shade400),
+                          const SizedBox(height: 12),
+                          Text(
+                            'No students found',
+                            style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Select a class or onboard students to get started',
+                            style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: _filteredStudents.length,
+                      itemBuilder: (_, i) => _buildStudentCard(_filteredStudents[i]),
+                    ),
         ),
       ]),
     );

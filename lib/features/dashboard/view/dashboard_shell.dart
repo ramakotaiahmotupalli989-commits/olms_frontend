@@ -87,6 +87,7 @@ class _DashboardShellState extends State<DashboardShell> {
           _MenuItem(Icons.account_balance_wallet_rounded, 'Salary Mgmt', '/principal/salaries'),
           _MenuItem(Icons.receipt_long_rounded, 'Fee Mgmt', '/principal/fees'),
           _MenuItem(Icons.calendar_view_week_rounded, 'Timetable', '/principal/timetable'),
+          _MenuItem(Icons.play_lesson_rounded, 'Content Library', '/teacher/library'),
           _MenuItem(Icons.chat_rounded, 'Messages', '/messaging'),
           _MenuItem(Icons.notifications_rounded, 'Notifications', '/notifications'),
         ];

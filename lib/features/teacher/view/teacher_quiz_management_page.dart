@@ -21,6 +21,8 @@ class _TeacherQuizManagementPageState extends State<TeacherQuizManagementPage> w
   List<dynamic> _quizzes = [];
   List<dynamic> _sessions = [];
   List<dynamic> _myAssignments = [];
+  List<dynamic> _subjects = [];
+  List<dynamic> _classes = [];
 
   @override
   void initState() {
@@ -34,10 +36,13 @@ class _TeacherQuizManagementPageState extends State<TeacherQuizManagementPage> w
     try {
       _quizzes = await _repo.getList('/teacher/quizzes');
       _sessions = await _repo.getList('/teacher/sessions');
-      // To schedule tests, we need to know which classes the teacher teaches
-      // We'll get this from a new endpoint or by checking their assignments
-      // For now, let's assume we can list their assignments
-      _myAssignments = await _repo.getList('/principal/teachers/me/assignments'); // TODO: implement /me/assignments or use principal's
+      _subjects = await _repo.getList('/teacher/subjects');
+      _classes = await _repo.getList('/teacher/classes');
+      try {
+        _myAssignments = await _repo.getList('/principal/teachers/me/assignments');
+      } catch (inner) {
+        debugPrint('[QuizMgmt] optional assignment load error: $inner');
+      }
       setState(() => _loading = false);
     } catch (e) {
       debugPrint('[QuizMgmt] Load error: $e');
@@ -143,8 +148,17 @@ class _TeacherQuizManagementPageState extends State<TeacherQuizManagementPage> w
                 const SizedBox(height: 12),
                 DropdownButtonFormField<int>(
                   decoration: const InputDecoration(labelText: 'Subject'),
-                  items: [1, 2, 3].map((id) => DropdownMenuItem(value: id, child: Text('Subject $id'))).toList(), // TODO: use real subjects
-                  onChanged: (v) => selectedSubjectId = v,
+                  value: selectedSubjectId,
+                  items: _subjects.map<DropdownMenuItem<int>>((s) {
+                    final int id = s['id'] ?? 0;
+                    final String name = s['name'] ?? '';
+                    final String grade = s['grade'] ?? '';
+                    return DropdownMenuItem<int>(
+                      value: id,
+                      child: Text('$name (Class $grade)'),
+                    );
+                  }).toList(),
+                  onChanged: (v) => setDialogState(() => selectedSubjectId = v),
                 ),
                 const Divider(height: 32),
                 Text('Questions (${questions.length})', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
@@ -257,8 +271,17 @@ class _TeacherQuizManagementPageState extends State<TeacherQuizManagementPage> w
               const SizedBox(height: 12),
               DropdownButtonFormField<int>(
                 decoration: const InputDecoration(labelText: 'Select Class'),
-                items: [1, 2, 3].map((id) => DropdownMenuItem(value: id, child: Text('Class $id'))).toList(), // TODO: use my assignments
-                onChanged: (v) => selectedClassId = v,
+                value: selectedClassId,
+                items: _classes.map<DropdownMenuItem<int>>((c) {
+                  final int id = c['id'] ?? 0;
+                  final String grade = c['grade'] ?? '';
+                  final String section = c['section'] ?? '';
+                  return DropdownMenuItem<int>(
+                    value: id,
+                    child: Text('Class $grade - $section'),
+                  );
+                }).toList(),
+                onChanged: (v) => setDialogState(() => selectedClassId = v),
               ),
               const SizedBox(height: 16),
               ListTile(

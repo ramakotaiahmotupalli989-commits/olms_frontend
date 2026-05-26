@@ -157,7 +157,10 @@ class _WatchHoursPageState extends State<WatchHoursPage> {
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(14),
-          onTap: () => _showSchoolStudents(s['school_id'], s['school_name']),
+          onTap: () => _showSchoolStudents(
+            _parseToInt(s['school_id']),
+            s['school_name']?.toString() ?? '',
+          ),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
@@ -242,70 +245,73 @@ class _WatchHoursPageState extends State<WatchHoursPage> {
         showModalBottomSheet(
           context: context,
           isScrollControlled: true,
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
+          backgroundColor: Colors.transparent,
           builder: (ctx) => DraggableScrollableSheet(
             initialChildSize: 0.7,
             maxChildSize: 0.95,
             minChildSize: 0.4,
-            expand: false,
-            builder: (ctx, scrollCtrl) => Column(
-              children: [
-                // Handle bar
-                Container(
-                  margin: const EdgeInsets.only(top: 12),
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
-                ),
-                // Header
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      Text(schoolName, style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w700)),
-                      const SizedBox(height: 4),
-                      Text('Total: ${_formatHours(schoolTotal)} • ${students.length} students',
-                          style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary)),
-                    ],
+            builder: (ctx, scrollCtrl) => Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              child: Column(
+                children: [
+                  // Handle bar
+                  Container(
+                    margin: const EdgeInsets.only(top: 12),
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
                   ),
-                ),
-                const Divider(height: 1),
-                // Student list
-                Expanded(
-                  child: students.isEmpty
-                      ? const Center(child: Text('No watch data for this school'))
-                      : ListView.builder(
-                          controller: scrollCtrl,
-                          itemCount: students.length,
-                          itemBuilder: (_, i) {
-                            final st = students[i];
-                            final hrs = _parseToDouble(st['total_watch_hours']);
-                            final videos = st['videos_watched'] ?? 0;
-                            return ListTile(
-                              leading: CircleAvatar(
-                                backgroundColor: hrs > 0 ? AppColors.accent.withValues(alpha: 0.1) : Colors.grey.shade100,
-                                child: Text('${i + 1}', style: GoogleFonts.outfit(fontWeight: FontWeight.w700, color: hrs > 0 ? AppColors.accent : Colors.grey)),
-                              ),
-                              title: Text(st['student_name'] ?? '', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600)),
-                              subtitle: Text('${st['roll_number'] ?? 'N/A'} • $videos videos watched', style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary)),
-                              trailing: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: hrs > 0 ? AppColors.success.withValues(alpha: 0.1) : Colors.grey.shade100,
-                                  borderRadius: BorderRadius.circular(12),
+                  // Header
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      children: [
+                        Text(schoolName, style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w700)),
+                        const SizedBox(height: 4),
+                        Text('Total: ${_formatHours(schoolTotal)} • ${students.length} students',
+                            style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary)),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  // Student list
+                  Expanded(
+                    child: students.isEmpty
+                        ? const Center(child: Text('No watch data for this school'))
+                        : ListView.builder(
+                            controller: scrollCtrl,
+                            itemCount: students.length,
+                            itemBuilder: (_, i) {
+                              final st = students[i];
+                              final hrs = _parseToDouble(st['total_watch_hours']);
+                              final videos = st['videos_watched'] ?? 0;
+                              return ListTile(
+                                leading: CircleAvatar(
+                                  backgroundColor: hrs > 0 ? AppColors.accent.withValues(alpha: 0.1) : Colors.grey.shade100,
+                                  child: Text('${i + 1}', style: GoogleFonts.outfit(fontWeight: FontWeight.w700, color: hrs > 0 ? AppColors.accent : Colors.grey)),
                                 ),
-                                child: Text(
-                                  _formatHours(hrs),
-                                  style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w700, color: hrs > 0 ? AppColors.success : Colors.grey),
+                                title: Text(st['student_name'] ?? '', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600)),
+                                subtitle: Text('${st['roll_number'] ?? 'N/A'} • $videos videos watched', style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary)),
+                                trailing: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: hrs > 0 ? AppColors.success.withValues(alpha: 0.1) : Colors.grey.shade100,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    _formatHours(hrs),
+                                    style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w700, color: hrs > 0 ? AppColors.success : Colors.grey),
+                                  ),
                                 ),
-                              ),
-                            );
-                          },
-                        ),
-                ),
-              ],
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -323,6 +329,13 @@ class _WatchHoursPageState extends State<WatchHoursPage> {
     if (value is num) return value.toDouble();
     if (value is String) return double.tryParse(value) ?? 0.0;
     return 0.0;
+  }
+
+  int _parseToInt(dynamic value) {
+    if (value == null) return 0;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
   }
 
   String _formatHours(dynamic value) {
