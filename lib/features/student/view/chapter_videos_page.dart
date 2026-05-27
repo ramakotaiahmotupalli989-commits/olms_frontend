@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
+import 'package:dio/dio.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/network/api_repository.dart';
 import '../../../core/widgets/shared_widgets.dart';
@@ -19,6 +20,8 @@ class _ChapterVideosPageState extends State<ChapterVideosPage> {
   List<dynamic> _videos = [];
   bool _loading = true;
 
+  String? _errorMessage;
+
   @override
   void initState() {
     super.initState();
@@ -26,11 +29,26 @@ class _ChapterVideosPageState extends State<ChapterVideosPage> {
   }
 
   Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _errorMessage = null;
+    });
     try {
       _videos = await _repo.getList('/student/chapter/${widget.chapterId}/videos');
       setState(() => _loading = false);
     } catch (e) {
-      setState(() => _loading = false);
+      String msg = 'Failed to load videos. Please try again.';
+      if (e is DioException) {
+        if (e.response?.statusCode == 403) {
+          msg = e.response?.data['detail'] ?? 'Access Restricted';
+        } else if (e.response?.data != null && e.response?.data['detail'] != null) {
+          msg = e.response?.data['detail'];
+        }
+      }
+      setState(() {
+        _errorMessage = msg;
+        _loading = false;
+      });
     }
   }
 
@@ -41,29 +59,84 @@ class _ChapterVideosPageState extends State<ChapterVideosPage> {
       appBar: AppBar(
         title: Text(widget.chapterTitle, style: GoogleFonts.outfit(fontWeight: FontWeight.w700)),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push('/messaging/new'),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.chat_bubble_outline),
-        label: const Text('Ask Doubt'),
-      ),
+      floatingActionButton: _errorMessage != null
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: () => context.push('/messaging/new'),
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              icon: const Icon(Icons.chat_bubble_outline),
+              label: const Text('Ask Doubt'),
+            ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : _videos.isEmpty
-              ? const EmptyState(
-                  icon: Icons.video_library_rounded,
-                  title: 'No videos available',
-                  subtitle: 'Videos will appear here once they are published for this chapter.',
+          : _errorMessage != null
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: AppColors.error.withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.lock_outline_rounded,
+                            color: AppColors.error,
+                            size: 48,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        Text(
+                          'Access Restricted',
+                          style: GoogleFonts.outfit(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _errorMessage!,
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            color: AppColors.textSecondary,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 24),
+                        ElevatedButton.icon(
+                          onPressed: _load,
+                          icon: const Icon(Icons.refresh_rounded, size: 18),
+                          label: const Text('Retry'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _videos.length,
-                  itemBuilder: (_, i) {
-                    final v = _videos[i];
-                    return _buildVideoCard(v);
-                  },
-                ),
+              : _videos.isEmpty
+                  ? const EmptyState(
+                      icon: Icons.video_library_rounded,
+                      title: 'No videos available',
+                      subtitle: 'Videos will appear here once they are published for this chapter.',
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: _videos.length,
+                      itemBuilder: (_, i) {
+                        final v = _videos[i];
+                        return _buildVideoCard(v);
+                      },
+                    ),
     );
   }
 

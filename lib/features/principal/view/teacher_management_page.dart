@@ -435,14 +435,16 @@ class _TeacherManagementPageState extends State<TeacherManagementPage> {
             ]),
             content: SizedBox(
               width: 420,
-              child: step == 0
-                  ? _buildStep1(nameCtrl, emailCtrl, phoneCtrl, passwordCtrl)
-                  : _buildStep2(
-                      setDialogState, availableSubjects, pendingAssignments,
-                      selectedClassId, selectedSubjectId,
-                      (cid) => selectedClassId = cid,
-                      (sid) => selectedSubjectId = sid,
-                    ),
+              child: SingleChildScrollView(
+                child: step == 0
+                    ? _buildStep1(nameCtrl, emailCtrl, phoneCtrl, passwordCtrl)
+                    : _buildStep2(
+                        setDialogState, availableSubjects, pendingAssignments,
+                        selectedClassId, selectedSubjectId,
+                        (cid) => selectedClassId = cid,
+                        (sid) => selectedSubjectId = sid,
+                      ),
+              ),
             ),
             actions: [
               // Back / Cancel

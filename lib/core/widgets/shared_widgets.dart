@@ -60,10 +60,10 @@ class _KpiCardState extends State<KpiCard> with SingleTickerProviderStateMixin {
         scale: _scaleAnim,
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final isCompact = constraints.maxHeight < 120;
+            final isCompact = constraints.maxHeight < 135;
             return AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              padding: EdgeInsets.all(isCompact ? 12 : 18),
+              padding: EdgeInsets.all(isCompact ? 10 : 15),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(18),
@@ -89,7 +89,7 @@ class _KpiCardState extends State<KpiCard> with SingleTickerProviderStateMixin {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Container(
-                        padding: EdgeInsets.all(isCompact ? 6 : 10),
+                        padding: EdgeInsets.all(isCompact ? 5 : 8),
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [widget.color.withValues(alpha: 0.15), widget.color.withValues(alpha: 0.05)],
@@ -98,7 +98,7 @@ class _KpiCardState extends State<KpiCard> with SingleTickerProviderStateMixin {
                           ),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Icon(widget.icon, color: widget.color, size: isCompact ? 16 : 20),
+                        child: Icon(widget.icon, color: widget.color, size: isCompact ? 14 : 18),
                       ),
                       if (widget.trend != null)
                         Container(
@@ -111,19 +111,29 @@ class _KpiCardState extends State<KpiCard> with SingleTickerProviderStateMixin {
                         ),
                     ],
                   ),
-                  SizedBox(height: isCompact ? 8 : 14),
+                  SizedBox(height: isCompact ? 6 : 10),
                   Flexible(
                     child: Text(
                       widget.value,
-                      style: GoogleFonts.outfit(fontSize: isCompact ? 18 : 24, fontWeight: FontWeight.w800, color: AppColors.textPrimary, letterSpacing: -0.5),
-                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.outfit(
+                        fontSize: isCompact ? 16 : 22,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                        letterSpacing: -0.5,
+                        height: 1.15,
+                      ),
+                      overflow: TextOverflow.clip,
                     ),
                   ),
-                  const SizedBox(height: 3),
-                  Text(widget.title, style: GoogleFonts.inter(fontSize: isCompact ? 10 : 12, color: AppColors.textSecondary, fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 2),
+                  Text(
+                    widget.title,
+                    style: GoogleFonts.inter(fontSize: isCompact ? 9 : 11, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   if (widget.subtitle != null) ...[
                     const SizedBox(height: 2),
-                    Text(widget.subtitle!, style: GoogleFonts.inter(fontSize: 10, color: widget.color, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis),
+                    Text(widget.subtitle!, style: GoogleFonts.inter(fontSize: 9, color: widget.color, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis),
                   ],
                 ],
               ),

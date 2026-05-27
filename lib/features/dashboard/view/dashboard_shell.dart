@@ -109,6 +109,7 @@ class _DashboardShellState extends State<DashboardShell> {
       case AppConstants.student:
         return const [
           _MenuItem(Icons.dashboard_rounded, 'Dashboard', '/student/dashboard'),
+          _MenuItem(Icons.play_circle_fill_rounded, 'Video Lessons', '/student/library'),
           _MenuItem(Icons.how_to_reg_rounded, 'Attendance', '/student/attendance'),
           _MenuItem(Icons.home_work_rounded, 'Homework', '/student/homework'),
           _MenuItem(Icons.quiz_rounded, 'Quizzes & Tests', '/student/tests'),
@@ -121,6 +122,9 @@ class _DashboardShellState extends State<DashboardShell> {
       case AppConstants.parent:
         return const [
           _MenuItem(Icons.dashboard_rounded, 'Dashboard', '/parent/dashboard'),
+          _MenuItem(Icons.how_to_reg_rounded, 'Attendance', '/parent/attendance'),
+          _MenuItem(Icons.trending_up_rounded, 'Learning Progress', '/parent/learning-progress'),
+          _MenuItem(Icons.analytics_rounded, 'Weekly Summary', '/parent/weekly-summary'),
           _MenuItem(Icons.assignment_rounded, 'Exam Results', '/parent/exam-results'),
           _MenuItem(Icons.chat_rounded, 'Messages', '/messaging'),
           _MenuItem(Icons.notifications_rounded, 'Notifications', '/notifications'),

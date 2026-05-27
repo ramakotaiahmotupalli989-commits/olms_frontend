@@ -4,6 +4,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/shared_widgets.dart';
 import '../../../core/network/api_repository.dart';
@@ -250,72 +251,138 @@ class _TeacherQuizManagementPageState extends State<TeacherQuizManagementPage> w
     int? selectedQuizId = quizId;
     int? selectedClassId;
     DateTime scheduledDate = DateTime.now().add(const Duration(hours: 1));
+    List<dynamic> filteredClasses = [];
+    bool loadingClasses = false;
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('Schedule Test'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DropdownButtonFormField<int>(
-                decoration: const InputDecoration(labelText: 'Select Quiz'),
-                value: selectedQuizId,
-                items: _quizzes.map<DropdownMenuItem<int>>((q) => DropdownMenuItem(value: q['id'], child: Text(q['title']))).toList(),
-                onChanged: (v) => selectedQuizId = v,
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<int>(
-                decoration: const InputDecoration(labelText: 'Select Class'),
-                value: selectedClassId,
-                items: _classes.map<DropdownMenuItem<int>>((c) {
-                  final int id = c['id'] ?? 0;
-                  final String grade = c['grade'] ?? '';
-                  final String section = c['section'] ?? '';
-                  return DropdownMenuItem<int>(
-                    value: id,
-                    child: Text('Class $grade - $section'),
-                  );
-                }).toList(),
-                onChanged: (v) => setDialogState(() => selectedClassId = v),
-              ),
-              const SizedBox(height: 16),
-              ListTile(
-                title: const Text('Start Date & Time'),
-                subtitle: Text(scheduledDate.toString()),
-                trailing: const Icon(Icons.calendar_today),
-                onTap: () async {
-                  final d = await showDatePicker(context: context, initialDate: scheduledDate, firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 365)));
-                  if (d != null) setDialogState(() => scheduledDate = DateTime(d.year, d.month, d.day, scheduledDate.hour, scheduledDate.minute));
+        builder: (ctx, setDialogState) {
+          Future<void> loadFilteredClasses(int qId) async {
+            setDialogState(() => loadingClasses = true);
+            try {
+              final selectedQuiz = _quizzes.firstWhere((q) => q['id'] == qId, orElse: () => null);
+              if (selectedQuiz != null) {
+                final subjectId = selectedQuiz['subject_id'];
+                final list = await _repo.getList('/teacher/classes?subject_id=$subjectId');
+                setDialogState(() {
+                  filteredClasses = list;
+                  loadingClasses = false;
+                  if (selectedClassId != null && !filteredClasses.any((c) => c['id'] == selectedClassId)) {
+                    selectedClassId = null;
+                  }
+                });
+              } else {
+                setDialogState(() {
+                  filteredClasses = [];
+                  loadingClasses = false;
+                  selectedClassId = null;
+                });
+              }
+            } catch (e) {
+              debugPrint('Error loading filtered classes: $e');
+              setDialogState(() => loadingClasses = false);
+            }
+          }
+
+          if (selectedQuizId != null && filteredClasses.isEmpty && !loadingClasses) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              loadFilteredClasses(selectedQuizId!);
+            });
+          }
+
+          return AlertDialog(
+            title: const Text('Schedule Test'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<int>(
+                  decoration: const InputDecoration(labelText: 'Select Quiz'),
+                  value: selectedQuizId,
+                  items: _quizzes.map<DropdownMenuItem<int>>((q) => DropdownMenuItem(value: q['id'] as int, child: Text(q['title'] ?? ''))).toList(),
+                  onChanged: (v) {
+                    if (v != null) {
+                      setDialogState(() {
+                        selectedQuizId = v;
+                      });
+                      loadFilteredClasses(v);
+                    }
+                  },
+                ),
+                const SizedBox(height: 12),
+                if (loadingClasses)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: CircularProgressIndicator(),
+                  )
+                else
+                  DropdownButtonFormField<int>(
+                    decoration: const InputDecoration(labelText: 'Select Class'),
+                    value: selectedClassId,
+                    items: filteredClasses.map<DropdownMenuItem<int>>((c) {
+                      final int id = c['id'] ?? 0;
+                      final String grade = c['grade'] ?? '';
+                      final String section = c['section'] ?? '';
+                      return DropdownMenuItem<int>(
+                        value: id,
+                        child: Text('Class $grade - $section'),
+                      );
+                    }).toList(),
+                    onChanged: (v) => setDialogState(() => selectedClassId = v),
+                  ),
+                const SizedBox(height: 16),
+                ListTile(
+                  title: const Text('Start Date & Time'),
+                  subtitle: Text(DateFormat('yyyy-MM-dd HH:mm').format(scheduledDate)),
+                  trailing: const Icon(Icons.calendar_today),
+                  onTap: () async {
+                    final d = await showDatePicker(
+                      context: context,
+                      initialDate: scheduledDate,
+                      firstDate: DateTime.now().subtract(const Duration(minutes: 5)),
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                    );
+                    if (d != null) {
+                      if (!ctx.mounted) return;
+                      final t = await showTimePicker(
+                        context: context,
+                        initialTime: TimeOfDay.fromDateTime(scheduledDate),
+                      );
+                      if (t != null) {
+                        setDialogState(() {
+                          scheduledDate = DateTime(d.year, d.month, d.day, t.hour, t.minute);
+                        });
+                      }
+                    }
+                  },
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+              ElevatedButton(
+                onPressed: () async {
+                  if (selectedQuizId == null || selectedClassId == null) return;
+                  try {
+                    await _repo.post('/teacher/sessions', data: {
+                      'quiz_id': selectedQuizId,
+                      'class_id': selectedClassId,
+                      'scheduled_at': scheduledDate.toUtc().toIso8601String(),
+                      'due_at': scheduledDate.add(const Duration(hours: 2)).toUtc().toIso8601String(),
+                    });
+                    if (!ctx.mounted) return;
+                    Navigator.pop(ctx);
+                    _load();
+                  } catch (e) {
+                    if (!ctx.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                  }
                 },
+                child: const Text('Schedule'),
               ),
             ],
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-            ElevatedButton(
-              onPressed: () async {
-                if (selectedQuizId == null || selectedClassId == null) return;
-                try {
-                  await _repo.post('/teacher/sessions', data: {
-                    'quiz_id': selectedQuizId,
-                    'class_id': selectedClassId,
-                    'scheduled_at': scheduledDate.toUtc().toIso8601String(),
-                    'due_at': scheduledDate.add(const Duration(hours: 2)).toUtc().toIso8601String(),
-                  });
-                  if (!mounted) return;
-                  Navigator.pop(context);
-                  _load();
-                } catch (e) {
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-                }
-              },
-              child: const Text('Schedule'),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }

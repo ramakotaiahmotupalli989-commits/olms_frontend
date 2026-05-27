@@ -88,22 +88,40 @@ class _StudentPerformancePageState extends State<StudentPerformancePage> {
 
   @override
   Widget build(BuildContext context) {
+    final isWide = MediaQuery.of(context).size.width > 600;
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('Student Performance')),
+      appBar: AppBar(
+        title: const Text('Student Performance'),
+        leading: (!isWide && _selectedStudentId != null)
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () {
+                  setState(() {
+                    _selectedStudentId = null;
+                    _perfData = null;
+                  });
+                },
+              )
+            : null,
+      ),
       body: _loadingStudents
           ? const Center(child: CircularProgressIndicator())
-          : Row(
-              children: [
-                // ── Student List Panel ──
-                SizedBox(
-                  width: MediaQuery.of(context).size.width > 800 ? 320 : MediaQuery.of(context).size.width * 0.4,
-                  child: _buildStudentList(),
-                ),
-                // ── Performance Panel ──
-                Expanded(child: _buildPerformancePanel()),
-              ],
-            ),
+          : isWide
+              ? Row(
+                  children: [
+                    // ── Student List Panel ──
+                    SizedBox(
+                      width: MediaQuery.of(context).size.width > 800 ? 320 : MediaQuery.of(context).size.width * 0.4,
+                      child: _buildStudentList(),
+                    ),
+                    // ── Performance Panel ──
+                    Expanded(child: _buildPerformancePanel()),
+                  ],
+                )
+              : (_selectedStudentId == null
+                  ? _buildStudentList()
+                  : _buildPerformancePanel()),
     );
   }
 

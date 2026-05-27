@@ -69,6 +69,8 @@ class _StudentDashboardState extends State<StudentDashboard> with TickerProvider
                   const SizedBox(height: 24),
                   _buildSubjectsGrid(),
                   const SizedBox(height: 24),
+                  _buildActiveTests(),
+                  const SizedBox(height: 24),
                   _buildPendingAssignments(),
                   const SizedBox(height: 24),
                   _buildAttendanceSummary(),
@@ -483,6 +485,124 @@ class _StudentDashboardState extends State<StudentDashboard> with TickerProvider
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildActiveTests() {
+    final activeTests = (_data?['active_tests'] as List?) ?? [];
+    if (activeTests.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SectionHeader(title: 'Active & Upcoming Quizzes'),
+        const SizedBox(height: 8),
+        ...activeTests.map((t) {
+          final isActive = t['status'] == 'active';
+          final badgeColor = isActive ? AppColors.success : AppColors.info;
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: badgeColor.withValues(alpha: 0.15)),
+              boxShadow: [
+                BoxShadow(
+                  color: badgeColor.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: badgeColor.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      isActive ? Icons.play_arrow_rounded : Icons.lock_clock,
+                      color: badgeColor,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: badgeColor.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                t['status'].toString().toUpperCase(),
+                                style: GoogleFonts.inter(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700,
+                                  color: badgeColor,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                t['subject_name'] ?? 'Subject',
+                                style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textSecondary,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          t['quiz_title'] ?? '',
+                          style: GoogleFonts.outfit(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  if (isActive)
+                    ElevatedButton(
+                      onPressed: () => context.push('/student/test-taking/${t['id']}').then((_) => _load()),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        backgroundColor: AppColors.primary,
+                      ),
+                      child: Text(
+                        'Start',
+                        style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white),
+                      ),
+                    )
+                  else
+                    Icon(Icons.lock_outline, color: Colors.grey.shade400, size: 20),
+                ],
+              ),
+            ),
+          );
+        }),
+      ],
     );
   }
 }

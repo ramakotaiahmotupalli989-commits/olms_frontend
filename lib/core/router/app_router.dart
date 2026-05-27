@@ -24,8 +24,12 @@ import '../../features/student/view/subject_chapters_page.dart';
 import '../../features/student/view/chapter_videos_page.dart';
 import '../../features/student/view/quiz_page.dart';
 import '../../features/student/view/student_tests_page.dart';
+import '../../features/student/view/student_video_library_page.dart';
 import '../../features/student/view/test_taking_page.dart';
 import '../../features/parent/view/parent_dashboard.dart';
+import '../../features/parent/view/parent_attendance_page.dart';
+import '../../features/parent/view/parent_learning_progress_page.dart';
+import '../../features/parent/view/parent_weekly_summary_page.dart';
 import '../../features/ranking/view/ranking_page.dart';
 import '../../features/notifications/view/notifications_page.dart';
 import '../../features/attendance/view/attendance_management_page.dart';
@@ -117,8 +121,8 @@ class AppRouter {
           GoRoute(path: '/teacher/salary', builder: (context, state) => const TeacherSalaryPage()),
           GoRoute(path: '/teacher/schedule', builder: (context, state) => const TeacherSchedulePage()),
 
-          // Student
           GoRoute(path: '/student/dashboard', builder: (context, state) => const StudentDashboard()),
+          GoRoute(path: '/student/library', builder: (context, state) => const StudentVideoLibraryPage()),
           GoRoute(
             path: '/student/subject/:subjectId',
             builder: (context, state) => SubjectChaptersPage(
@@ -143,6 +147,9 @@ class AppRouter {
 
           // Parent
           GoRoute(path: '/parent/dashboard', builder: (context, state) => const ParentDashboard()),
+          GoRoute(path: '/parent/attendance', builder: (context, state) => const ParentAttendancePage()),
+          GoRoute(path: '/parent/learning-progress', builder: (context, state) => const ParentLearningProgressPage()),
+          GoRoute(path: '/parent/weekly-summary', builder: (context, state) => const ParentWeeklySummaryPage()),
           GoRoute(path: '/parent/exam-results', builder: (context, state) => const ParentExamResultsPage()),
 
           // Shared
