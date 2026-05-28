@@ -2,6 +2,7 @@
 /// Teachers create, manage, and track homework assignments for their classes.
 library;
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -241,7 +242,15 @@ class _TeacherHomeworkPageState extends State<TeacherHomeworkPage>
         ),
       );
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error));
+      String errMsg = e.toString();
+      if (e is DioException) {
+        final resData = e.response?.data;
+        if (resData is Map) {
+          final detail = resData['detail'];
+          if (detail != null) errMsg = detail.toString();
+        }
+      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $errMsg'), backgroundColor: AppColors.error));
     }
   }
 
@@ -278,7 +287,15 @@ class _TeacherHomeworkPageState extends State<TeacherHomeworkPage>
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Assignment deleted'), backgroundColor: AppColors.success));
       _loadAssignments();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error));
+      String errMsg = e.toString();
+      if (e is DioException) {
+        final resData = e.response?.data;
+        if (resData is Map) {
+          final detail = resData['detail'];
+          if (detail != null) errMsg = detail.toString();
+        }
+      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $errMsg'), backgroundColor: AppColors.error));
     }
   }
 
@@ -571,7 +588,15 @@ class _CreateAssignmentFormState extends State<_CreateAssignmentForm> {
       }
     } catch (e) {
       setState(() => _saving = false);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error));
+      String errMsg = e.toString();
+      if (e is DioException) {
+        final resData = e.response?.data;
+        if (resData is Map) {
+          final detail = resData['detail'];
+          if (detail != null) errMsg = detail.toString();
+        }
+      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $errMsg'), backgroundColor: AppColors.error));
     }
   }
 }

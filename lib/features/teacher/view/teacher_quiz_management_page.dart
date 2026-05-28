@@ -2,12 +2,30 @@
 /// Create MCQ quizzes and schedule them for assigned classes.
 library;
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/shared_widgets.dart';
 import '../../../core/network/api_repository.dart';
+
+DateTime? _parseUtc(String? str) {
+  if (str == null || str.isEmpty) return null;
+  var formatted = str;
+  if (!formatted.endsWith('Z') && !formatted.contains('+')) {
+    final parts = formatted.split(RegExp(r'[T ]'));
+    if (parts.length > 1) {
+      final timePart = parts[1];
+      if (!timePart.contains('-')) {
+        formatted = '${formatted}Z';
+      }
+    } else {
+      formatted = '${formatted}Z';
+    }
+  }
+  return DateTime.tryParse(formatted);
+}
 
 class TeacherQuizManagementPage extends StatefulWidget {
   const TeacherQuizManagementPage({super.key});
@@ -108,15 +126,40 @@ class _TeacherQuizManagementPageState extends State<TeacherQuizManagementPage> w
       itemCount: _sessions.length,
       itemBuilder: (_, i) {
         final s = _sessions[i];
+        final quiz = _quizzes.firstWhere((q) => q['id'] == s['quiz_id'], orElse: () => null);
+        final quizTitle = quiz != null ? quiz['title'] : 'Quiz #${s['quiz_id']}';
+        final classroom = _classes.firstWhere((c) => c['id'] == s['class_id'], orElse: () => null);
+        final classLabel = classroom != null ? 'Class ${classroom['grade']} - ${classroom['section']}' : 'Class #${s['class_id']}';
+
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
           child: ListTile(
             leading: const Icon(Icons.event_note, color: AppColors.primary),
-            title: Text('Quiz ID: ${s['quiz_id']} for Class ID: ${s['class_id']}', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
-            subtitle: Text('Due: ${s['due_at']}\nAnswers show: ${s['answers_published_at']}', style: GoogleFonts.inter(fontSize: 11)),
-            trailing: IconButton(
-              icon: const Icon(Icons.leaderboard_rounded, color: AppColors.accent),
-              onPressed: () => _showRankings(s['id']),
+            title: Text('$quizTitle for $classLabel', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+            subtitle: Text(
+              'Due: ${(() {
+                final dt = _parseUtc(s['due_at'])?.toLocal();
+                return dt != null ? DateFormat('yyyy-MM-dd HH:mm').format(dt) : (s['due_at'] ?? '');
+              })()}\nAnswers show: ${(() {
+                final dt = _parseUtc(s['answers_published_at'])?.toLocal();
+                return dt != null ? DateFormat('yyyy-MM-dd HH:mm').format(dt) : (s['answers_published_at'] ?? '');
+              })()}',
+              style: GoogleFonts.inter(fontSize: 11),
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.edit_calendar_rounded, color: AppColors.primary),
+                  onPressed: () => _showEditScheduleDialog(s),
+                  tooltip: 'Edit Schedule',
+                ),
+                IconButton(
+                  icon: const Icon(Icons.leaderboard_rounded, color: AppColors.accent),
+                  onPressed: () => _showRankings(s['id']),
+                  tooltip: 'Rankings',
+                ),
+              ],
             ),
           ),
         );
@@ -190,7 +233,7 @@ class _TeacherQuizManagementPageState extends State<TeacherQuizManagementPage> w
                     'questions': questions,
                   });
                   if (!mounted) return;
-                  Navigator.pop(context);
+                  Navigator.pop(ctx);
                   _load();
                 } catch (e) {
                   if (!mounted) return;
@@ -363,6 +406,25 @@ class _TeacherQuizManagementPageState extends State<TeacherQuizManagementPage> w
               ElevatedButton(
                 onPressed: () async {
                   if (selectedQuizId == null || selectedClassId == null) return;
+
+                  // Frontend Check for existing active schedule
+                  final now = DateTime.now();
+                  final hasActive = _sessions.any((s) {
+                    if (s['quiz_id'] == selectedQuizId && s['is_active'] == true) {
+                      final dueAt = _parseUtc(s['due_at'])?.toLocal();
+                      return dueAt != null && dueAt.isAfter(now);
+                    }
+                    return false;
+                  });
+
+                  if (hasActive) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text('This quiz is already scheduled. Please edit the existing schedule.'),
+                      backgroundColor: AppColors.error,
+                    ));
+                    return;
+                  }
+
                   try {
                     await _repo.post('/teacher/sessions', data: {
                       'quiz_id': selectedQuizId,
@@ -375,10 +437,104 @@ class _TeacherQuizManagementPageState extends State<TeacherQuizManagementPage> w
                     _load();
                   } catch (e) {
                     if (!ctx.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                    String errMsg = e.toString();
+                    if (e is DioException) {
+                      final resData = e.response?.data;
+                      if (resData is Map) {
+                        final detail = resData['detail'];
+                        if (detail != null) errMsg = detail.toString();
+                      }
+                    }
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $errMsg'), backgroundColor: AppColors.error));
                   }
                 },
                 child: const Text('Schedule'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  void _showEditScheduleDialog(dynamic session) {
+    DateTime scheduledDate = _parseUtc(session['scheduled_at'])?.toLocal() ?? DateTime.now().add(const Duration(hours: 1));
+    final int sessionId = session['id'];
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          final quiz = _quizzes.firstWhere((q) => q['id'] == session['quiz_id'], orElse: () => null);
+          final quizTitle = quiz != null ? quiz['title'] : 'Quiz #${session['quiz_id']}';
+          final classroom = _classes.firstWhere((c) => c['id'] == session['class_id'], orElse: () => null);
+          final classLabel = classroom != null ? 'Class ${classroom['grade']} - ${classroom['section']}' : 'Class #${session['class_id']}';
+
+          return AlertDialog(
+            title: const Text('Edit Test Schedule'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Quiz: $quizTitle', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                Text('Target: $classLabel', style: GoogleFonts.inter(color: AppColors.textSecondary)),
+                const Divider(height: 24),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Start Date & Time'),
+                  subtitle: Text(DateFormat('yyyy-MM-dd HH:mm').format(scheduledDate)),
+                  trailing: const Icon(Icons.calendar_today, color: AppColors.primary),
+                  onTap: () async {
+                    final d = await showDatePicker(
+                      context: context,
+                      initialDate: scheduledDate,
+                      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                    );
+                    if (d != null) {
+                      if (!ctx.mounted) return;
+                      final t = await showTimePicker(
+                        context: context,
+                        initialTime: TimeOfDay.fromDateTime(scheduledDate),
+                      );
+                      if (t != null) {
+                        setDialogState(() {
+                          scheduledDate = DateTime(d.year, d.month, d.day, t.hour, t.minute);
+                        });
+                      }
+                    }
+                  },
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+              ElevatedButton(
+                onPressed: () async {
+                  try {
+                    await _repo.put('/teacher/sessions/$sessionId', data: {
+                      'scheduled_at': scheduledDate.toUtc().toIso8601String(),
+                      'due_at': scheduledDate.add(const Duration(hours: 2)).toUtc().toIso8601String(),
+                    });
+                    if (!ctx.mounted) return;
+                    Navigator.pop(ctx);
+                    _load();
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Schedule updated successfully'), backgroundColor: AppColors.success));
+                  } catch (e) {
+                    if (!ctx.mounted) return;
+                    String errMsg = e.toString();
+                    if (e is DioException) {
+                      final resData = e.response?.data;
+                      if (resData is Map) {
+                        final detail = resData['detail'];
+                        if (detail != null) errMsg = detail.toString();
+                      }
+                    }
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $errMsg'), backgroundColor: AppColors.error));
+                  }
+                },
+                child: const Text('Save Changes'),
               ),
             ],
           );
@@ -644,7 +800,7 @@ class _TeacherQuizManagementPageState extends State<TeacherQuizManagementPage> w
                     'questions': questions,
                   });
                   if (!mounted) return;
-                  Navigator.pop(context);
+                  Navigator.pop(ctx);
                   _load();
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Quiz updated successfully'), backgroundColor: AppColors.success));
                 } catch (e) {

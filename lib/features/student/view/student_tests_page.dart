@@ -10,6 +10,22 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/shared_widgets.dart';
 import '../../../core/network/api_repository.dart';
 
+DateTime _parseUtc(String str) {
+  var formatted = str;
+  if (!formatted.endsWith('Z') && !formatted.contains('+')) {
+    final parts = formatted.split(RegExp(r'[T ]'));
+    if (parts.length > 1) {
+      final timePart = parts[1];
+      if (!timePart.contains('-')) {
+        formatted = '${formatted}Z';
+      }
+    } else {
+      formatted = '${formatted}Z';
+    }
+  }
+  return DateTime.parse(formatted);
+}
+
 class StudentTestsPage extends StatefulWidget {
   const StudentTestsPage({super.key});
 
@@ -76,8 +92,8 @@ class _StudentTestsPageState extends State<StudentTestsPage> {
 
   Widget _buildTestCard(Map<String, dynamic> s) {
     final now = DateTime.now();
-    final sched = DateTime.parse(s['scheduled_at']);
-    final due = DateTime.parse(s['due_at']);
+    final sched = _parseUtc(s['scheduled_at']).toLocal();
+    final due = _parseUtc(s['due_at']).toLocal();
     final attempted = s['has_attempted'] ?? false;
     
     // Status resolution

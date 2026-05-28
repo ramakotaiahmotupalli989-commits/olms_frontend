@@ -9,6 +9,22 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/network/api_repository.dart';
 import 'package:go_router/go_router.dart';
 
+DateTime _parseUtc(String str) {
+  var formatted = str;
+  if (!formatted.endsWith('Z') && !formatted.contains('+')) {
+    final parts = formatted.split(RegExp(r'[T ]'));
+    if (parts.length > 1) {
+      final timePart = parts[1];
+      if (!timePart.contains('-')) {
+        formatted = '${formatted}Z';
+      }
+    } else {
+      formatted = '${formatted}Z';
+    }
+  }
+  return DateTime.parse(formatted);
+}
+
 class TestTakingPage extends StatefulWidget {
   final int sessionId;
   const TestTakingPage({super.key, required this.sessionId});
@@ -48,7 +64,7 @@ class _TestTakingPageState extends State<TestTakingPage> {
       final questions = (data['questions'] as List?) ?? [];
       
       // Calculate remaining time based on due_at
-      final dueTime = DateTime.parse(data['due_at']);
+      final dueTime = _parseUtc(data['due_at']).toLocal();
       final diff = dueTime.difference(DateTime.now());
       
       setState(() {

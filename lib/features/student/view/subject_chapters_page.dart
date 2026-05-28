@@ -74,7 +74,7 @@ class _SubjectChaptersPageState extends State<SubjectChaptersPage> {
                   }
                 }
               : () {
-                  context.push('/student/chapter/${ch['id']}?title=${Uri.encodeComponent(ch['title'] ?? 'Chapter')}');
+                  context.push('/student/chapter/${ch['chapter_id']}?title=${Uri.encodeComponent(ch['title'] ?? 'Chapter')}');
                 },
           borderRadius: BorderRadius.circular(16),
           child: Container(
