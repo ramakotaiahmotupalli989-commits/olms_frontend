@@ -63,6 +63,8 @@ class _StudentDashboardState extends State<StudentDashboard> with TickerProvider
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   _buildWelcomeBanner(),
                   const SizedBox(height: 20),
+                  _buildWatchVideosBanner(),
+                  const SizedBox(height: 20),
                   _buildContinueLearning(),
                   const SizedBox(height: 24),
                   _buildAskDoubtCard(),
@@ -121,6 +123,68 @@ class _StudentDashboardState extends State<StudentDashboard> with TickerProvider
               _statChip('\u{2B50} $points pts'),
             ]),
           ]),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWatchVideosBanner() {
+    return GestureDetector(
+      onTap: () => context.push('/student/library'),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF8E2DE2), Color(0xFF4A00E0)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF4A00E0).withValues(alpha: 0.3),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.play_circle_fill_rounded, color: Colors.white, size: 28),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Watch Video Lessons',
+                    style: GoogleFonts.outfit(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Dive into cinematic animation lessons of your class subjects.',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      color: Colors.white.withValues(alpha: 0.85),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(Icons.chevron_right_rounded, color: Colors.white),
+          ],
         ),
       ),
     );
@@ -219,7 +283,7 @@ class _StudentDashboardState extends State<StudentDashboard> with TickerProvider
             ];
             final gradient = gradients[i % gradients.length];
             return GestureDetector(
-              onTap: () => context.push('/student/subject/${s['id']}?name=${Uri.encodeComponent(s['name'] ?? 'Subject')}'),
+              onTap: () => context.push('/student/library?subjectId=${s['id']}'),
               child: Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(

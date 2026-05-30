@@ -20,8 +20,6 @@ import '../../features/teacher/view/teacher_quiz_management_page.dart';
 import '../../features/teacher/view/presentation_player_page.dart';
 import '../../features/teacher_analytics/view/performance_overview.dart';
 import '../../features/student/view/student_dashboard.dart';
-import '../../features/student/view/subject_chapters_page.dart';
-import '../../features/student/view/chapter_videos_page.dart';
 import '../../features/student/view/quiz_page.dart';
 import '../../features/student/view/student_tests_page.dart';
 import '../../features/student/view/student_video_library_page.dart';
@@ -122,19 +120,10 @@ class AppRouter {
           GoRoute(path: '/teacher/schedule', builder: (context, state) => const TeacherSchedulePage()),
 
           GoRoute(path: '/student/dashboard', builder: (context, state) => const StudentDashboard()),
-          GoRoute(path: '/student/library', builder: (context, state) => const StudentVideoLibraryPage()),
           GoRoute(
-            path: '/student/subject/:subjectId',
-            builder: (context, state) => SubjectChaptersPage(
-              subjectId: int.parse(state.pathParameters['subjectId'] ?? '0'),
-              subjectName: state.uri.queryParameters['name'] ?? 'Subject',
-            ),
-          ),
-          GoRoute(
-            path: '/student/chapter/:chapterId',
-            builder: (context, state) => ChapterVideosPage(
-              chapterId: int.parse(state.pathParameters['chapterId'] ?? '0'),
-              chapterTitle: state.uri.queryParameters['title'] ?? 'Chapter',
+            path: '/student/library',
+            builder: (context, state) => StudentVideoLibraryPage(
+              initialSubjectId: int.tryParse(state.uri.queryParameters['subjectId'] ?? ''),
             ),
           ),
 

@@ -10,7 +10,8 @@ import '../../../core/widgets/shared_widgets.dart';
 import '../../../core/network/api_repository.dart';
 
 class StudentVideoLibraryPage extends StatefulWidget {
-  const StudentVideoLibraryPage({super.key});
+  final int? initialSubjectId;
+  const StudentVideoLibraryPage({super.key, this.initialSubjectId});
 
   @override
   State<StudentVideoLibraryPage> createState() => _StudentVideoLibraryPageState();
@@ -42,10 +43,26 @@ class _StudentVideoLibraryPageState extends State<StudentVideoLibraryPage> {
       // Fetches the dashboard data which contains the list of subjects for the student's class grade
       final data = await _repo.get('/student/dashboard');
       if (mounted) {
+        final loadedSubjects = data['subjects'] as List? ?? [];
+        int? initialIdx;
+        if (widget.initialSubjectId != null) {
+          for (int i = 0; i < loadedSubjects.length; i++) {
+            if (loadedSubjects[i]['id'] == widget.initialSubjectId) {
+              initialIdx = i;
+              break;
+            }
+          }
+        }
         setState(() {
-          _subjects = data['subjects'] as List? ?? [];
+          _subjects = loadedSubjects;
           _loading = false;
+          if (initialIdx != null) {
+            _expandedSubjectIdx = initialIdx;
+          }
         });
+        if (widget.initialSubjectId != null) {
+          _loadChapters(widget.initialSubjectId!);
+        }
       }
     } catch (e) {
       if (mounted) {
