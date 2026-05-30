@@ -60,11 +60,11 @@ class _NewConversationPageState extends ConsumerState<NewConversationPage> {
 
     final api = ApiRepository();
     try {
-      final teachersRes = await api.getList('/users', params: {'role': 'teacher'});
+      final teachersRes = await api.get('/users', params: {'role': 'teacher'});
       final subjectsRes = await api.getList('/cms/subjects');
       if (mounted) {
         setState(() {
-          _teachers = teachersRes;
+          _teachers = (teachersRes['users'] as List?) ?? [];
           _subjects = subjectsRes;
           _isLoadingTeachers = false;
         });
